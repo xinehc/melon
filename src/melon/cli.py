@@ -2,6 +2,7 @@ import sys
 import os
 import glob
 
+from os import environ, cpu_count
 from argparse import ArgumentParser, SUPPRESS
 from . import __version__
 from .utils import logger
@@ -43,8 +44,8 @@ def cli(argv=sys.argv):
         '--threads',
         metavar='INT',
         type=int,
-        default=32,
-        help='Number of CPU threads. [32]')
+        default=os.cpu_count(),
+        help='Number of threads. [{}]'.format(os.cpu_count()))
 
     optional.add_argument(
         '-k',
@@ -150,6 +151,12 @@ def run(opt):
             if 'ktaxonomy.tsv' not in files or len([x for x in files if 'database' in x]) != 7:
                 logger.critical('Kraken2 database <{}> is not complete.'.format(opt.db_kraken))
                 sys.exit(2)
+
+    ## check for logical cores
+    if opt.threads > os.cpu_count():
+        logger.warning('Threads <{}> exceeds number of available logical cores, will use <{}> threads instead.'.format(opt.threads, os.cpu_count()))
+        opt.threads = os.cpu_count()
+    environ['OMP_NUM_THREADS'] = str(opt.threads)
 
     ## run
     for i, file in enumerate(opt.FILE):
