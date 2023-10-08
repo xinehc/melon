@@ -137,8 +137,8 @@ def run(opt):
         sys.exit(2)
     else:
         files = [os.path.basename(x) for x in glob.glob(os.path.join(opt.db, '*'))]
-        if 'metadata.tsv' not in files or len([x for x in files if 'prot' in x]) != 1 or len([x for x in files if 'nucl' in x]) != 16:
-            logger.critical('Database <{}> is not complete.'.format(opt.db))
+        if 'metadata.tsv' not in files or 'prot.dmnd' not in files or len([x for x in files if 'nucl' in x and '.mmi' in x]) != 16:
+            logger.critical('Database <{}> is not complete or not indexed.'.format(opt.db))
             sys.exit(2)
 
     ## check for kraken2 database

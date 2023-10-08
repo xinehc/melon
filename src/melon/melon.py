@@ -1,4 +1,5 @@
 import glob
+import json
 from collections import defaultdict
 
 from .utils import *
@@ -47,7 +48,7 @@ class GenomeProfiler:
         '''
         Parse kraken2's output by
             1: recording the ids of eukaryota (2759), viruses (10239), other entries (2787854).
-            2: adding the id of the sequence to a negative search set if it contains more than 25 matched kmers.
+            2: adding the id of the sequence to a negative set.
         '''
         seqid, taxid = set(), set()
         record = False
@@ -63,14 +64,8 @@ class GenomeProfiler:
         with open(get_filename(self.file, self.output, '.kraken.output.tmp')) as f:
             for line in f:
                 ls = line.rstrip().split('\t')
-                ks = [x.split(':') for x in ls[-1].split()]
-                if any(x[0] in taxid for x in ks):
-                    cnt = defaultdict(lambda: 0)
-                    for key, val in ks:
-                        cnt[key] += int(val)
-
-                    if any([key in taxid for key, val in cnt.items() if val > 25]):
-                        seqid.add(ls[1])
+                if ls[2] in taxid:
+                    seqid.add(ls[1])
 
         self.nset.update(seqid)
 
@@ -82,7 +77,7 @@ class GenomeProfiler:
         outfmt = ['qseqid', 'sseqid', 'pident', 'length', 'qlen', 'qstart', 'qend', 'slen', 'sstart', 'send', 'evalue', 'bitscore']
         subprocess.run([
             'diamond', 'blastx',
-            '--db', os.path.join(db, 'prot.fa'),
+            '--db', os.path.join(db, 'prot.dmnd'),
             '--query', self.file,
             '--out', get_filename(self.file, self.output, '.diamond.tmp'),
             '--outfmt', '6', *outfmt,
@@ -159,7 +154,7 @@ class GenomeProfiler:
                     '-f', '0',
                     '-N', str(secondary_num), '-p', str(secondary_ratio),
                     '-t', str(self.threads),
-                    os.path.join(db, 'nucl.' + key + '.fa'), '-',
+                    os.path.join(db, 'nucl.' + key + '.mmi'), '-',
                 ], check=True, stdout=w, stderr=subprocess.DEVNULL, input=sequences, text=True)
 
 
@@ -268,7 +263,7 @@ class GenomeProfiler:
             logger.info('Filtering reads ...')
             self.run_kraken(db_kraken)
             self.parse_kraken()
-            logger.info('... removed {} putative non-prokaryotic reads.'.format(len(self.nset)))
+            logger.info('... removed {} putatively non-prokaryotic reads.'.format(len(self.nset)))
 
         logger.info('Estimating genome copies ...')
         self.run_diamond(db, max_target_seqs, evalue, identity, subject_cover)
@@ -323,7 +318,18 @@ class GenomeProfiler:
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
                 w.write('\t'.join(['superkingdom', 'copies', 'abundance']) + '\n')
                 for line in self.profile:
-                    w.write('\t'.join(str(x) for x in line) + '\n')
+                    if line[1] != 0:
+                        w.write('\t'.join(str(x) for x in line) + '\n')
+
+        ## save reads
+        reads = {x:{'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for x in self.nset}
+        if not skip_profile:
+            reads.update({x[0]:{'remark': 'marker-gene-containing', 'lineage': self.assignments.get(x[0], replacement.get(x[1]))} for x in self.hits})
+        else:
+            reads.update({x[0]:{'remark': 'marker-gene-containing', 'lineage': x[1]} for x in self.hits})
+
+        with open(get_filename(self.file, self.output, '.json'), 'w') as w:
+            json.dump(dict(sorted(reads.items())), w, indent=4)
 
         ## clean up
         if not skip_clean:
