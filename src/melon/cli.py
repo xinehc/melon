@@ -49,7 +49,7 @@ def cli(argv=sys.argv):
 
     optional.add_argument(
         '-k',
-        '--db_kraken',
+        '--db-kraken',
         metavar='DIR',
         help='Unzipped kraken2 database for pre-filtering of non-prokaryotic reads. Skip if not given.')
 

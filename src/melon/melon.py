@@ -246,7 +246,7 @@ class GenomeProfiler:
 
             ## if still tie in AS and de, choose the one with known species name
             target = sorted([
-                [np.mean(val['AS']), np.mean(val['MS']), np.mean(val['ID']), not bool(re.search(' sp\.$| sp\. |sp[0-9]+', key.split(';')[-1])), key] for key, val in scores.items()
+                [np.mean(val['AS']), np.mean(val['MS']), np.mean(val['ID']), not bool(re.search(' sp\.$| sp\. | sp[0-9]+', key.split(';')[-1])), key] for key, val in scores.items()
             ], reverse=True)[0][-1]
 
             for qseqid in val:
@@ -300,7 +300,7 @@ class GenomeProfiler:
 
             richness = {'bacteria': 0, 'archaea': 0}
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
-                w.write('\t'.join(self.ranks + ['copies', 'abundance']) + '\n')
+                w.write('\t'.join(self.ranks + ['copy', 'abundance']) + '\n')
                 for line in self.profile:
                     if not re.search('unclassified (Bacteria|Archaea) species', line[6]):
                         richness[line[0].split('|')[-1].lower()] += 1
@@ -316,7 +316,7 @@ class GenomeProfiler:
             ], key=lambda x: (x[-2], x[-3]))
 
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
-                w.write('\t'.join(['superkingdom', 'copies', 'abundance']) + '\n')
+                w.write('\t'.join(['superkingdom', 'copy', 'abundance']) + '\n')
                 for line in self.profile:
                     if line[1] != 0:
                         w.write('\t'.join(str(x) for x in line) + '\n')
