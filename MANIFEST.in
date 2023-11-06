@@ -1,5 +1,0 @@
-include README.md
-include CHANGELOG.md
-include LICENSE
-
-global-exclude *.DS_Store

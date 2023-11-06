@@ -22,7 +22,7 @@ def sort_coordinate(start, end):
     '''
     Convert coordinate to 0-based, then sort.
     '''
-    return (start-1, end) if start < end else (end-1, start)
+    return (start - 1, end) if start < end else (end - 1, start)
 
 
 def compute_overlap(coordinates, func=None):
@@ -77,7 +77,7 @@ def reassign_taxonomy(matrix, eps=1e-5, max_iteration=100):
         if np.sum(np.abs(p_mappings - p_mappings_hist)) < eps:
             break
 
-        ## update p_reads_hist
+        ## update hist
         np.copyto(p_mappings_hist, p_mappings)
 
     ## return assignments

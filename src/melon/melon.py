@@ -9,7 +9,7 @@ class GenomeProfiler:
     '''
     Profile taxonomic genomes using a set of marker genes.
     '''
-    def __init__(self, file, output, threads=32):
+    def __init__(self, file, output, threads=os.cpu_count()):
         self.file = file
         self.output = output
         self.threads = threads
@@ -125,7 +125,7 @@ class GenomeProfiler:
                             self.hits.append([qseqid, kingdom, gene, qstart, qend])
 
         for key, val in srange.items():
-            cut = round(len(val) / 4) # in this case same as counting hits since all hits have subject cover > 75%
+            cut = round(len(val) / 4)  # in this case same as counting hits since all hits have subject cover > 75%
             kingdom = key.split('-')[-2]
             if kingdom == 'bacteria':
                 self.copies[kingdom] += np.mean(val[cut:-cut]) / len(self.bset)
@@ -246,7 +246,7 @@ class GenomeProfiler:
 
             ## if still tie in AS and de, choose the one with known species name
             target = sorted([
-                [np.mean(val['AS']), np.mean(val['MS']), np.mean(val['ID']), not bool(re.search(' sp\.$| sp\. | sp[0-9]+', key.split(';')[-1])), key] for key, val in scores.items()
+                [np.mean(val['AS']), np.mean(val['MS']), np.mean(val['ID']), not bool(re.search(r' sp\.$| sp\. | sp[0-9]+', key.split(';')[-1])), key] for key, val in scores.items()
             ], reverse=True)[0][-1]
 
             for qseqid in val:
@@ -282,7 +282,7 @@ class GenomeProfiler:
                 'bacteria': ';'.join(['2|Bacteria'] + ['0|unclassified Bacteria ' + x.lower() for x in self.ranks[1:]]),
                 'archaea': ';'.join(['2157|Archaea'] + ['0|unclassified Archaea ' + x.lower() for x in self.ranks[1:]])
             }
-            
+
             ## fit gtdb style
             if self.assignments and '|' not in next(iter(self.assignments.values())).split(';')[0]:
                 replacement = {key: ';'.join(x.split('|')[-1] for x in val.split(';')) for key, val in replacement.items()}
@@ -322,11 +322,11 @@ class GenomeProfiler:
                         w.write('\t'.join(str(x) for x in line) + '\n')
 
         ## save reads
-        reads = {x:{'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for x in self.nset}
+        reads = {x: {'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for x in self.nset}
         if not skip_profile:
-            reads.update({x[0]:{'remark': 'marker-gene-containing', 'lineage': self.assignments.get(x[0], replacement.get(x[1]))} for x in self.hits})
+            reads.update({x[0]: {'remark': 'marker-gene-containing', 'lineage': self.assignments.get(x[0], replacement.get(x[1]))} for x in self.hits})
         else:
-            reads.update({x[0]:{'remark': 'marker-gene-containing', 'lineage': x[1]} for x in self.hits})
+            reads.update({x[0]: {'remark': 'marker-gene-containing', 'lineage': x[1]} for x in self.hits})
 
         with open(get_filename(self.file, self.output, '.json'), 'w') as w:
             json.dump(dict(sorted(reads.items())), w, indent=4)

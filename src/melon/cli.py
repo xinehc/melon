@@ -2,7 +2,6 @@ import sys
 import os
 import glob
 
-from os import environ, cpu_count
 from argparse import ArgumentParser, SUPPRESS
 from . import __version__
 from .utils import logger
@@ -108,7 +107,7 @@ def cli(argv=sys.argv):
     parser.add_argument('-v', '--version', action='version', version=__version__, help=SUPPRESS)
     parser.add_argument('-h', '--help', action='help', help=SUPPRESS)
 
-    if len(argv)==1:
+    if len(argv) == 1:
         print("             __        \n  __ _  ___ / /__  ___ \n /  ' \\/ -_) / _ \\/ _ \\\n/_/_/_/\\__/_/\\___/_//_/ ver. {}\n".format(__version__))
 
     opt = parser.parse_args(argv[1:])
@@ -156,12 +155,12 @@ def run(opt):
     if opt.threads > os.cpu_count():
         logger.warning('Threads <{}> exceeds number of available logical cores, will use <{}> threads instead.'.format(opt.threads, os.cpu_count()))
         opt.threads = os.cpu_count()
-    environ['OMP_NUM_THREADS'] = str(opt.threads)
+    os.environ['OMP_NUM_THREADS'] = str(opt.threads)
 
     ## run
     for i, file in enumerate(opt.FILE):
         if len(opt.FILE) > 1:
-            logger.info('Processing file <{}> ({}/{}) ...'.format(file, i+1, len(opt.FILE)))
+            logger.info('Processing file <{}> ({}/{}) ...'.format(file, i + 1, len(opt.FILE)))
 
         GenomeProfiler(file, opt.output, opt.threads).run(
             db=opt.db,

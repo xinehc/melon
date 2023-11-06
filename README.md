@@ -37,7 +37,7 @@ rm -rf database/*.fa
 
 ### Run Melon
 > [!NOTE]  
-> Melon takes **quality-controlled** and **decontaminated** long reads as input. We suggest to remove low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` 10 (minimal quality score 10; minimal read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or known eukaryotes/viruses, please consider removing them via proper mapping. If the origin of contamination is unknown, or if you want to estimate the mean genome size of prokaryotes, you may consider enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
+> Melon takes **quality-controlled** and **decontaminated** long reads as input. We suggest to remove low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` (minimal quality score 10; minimal read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or known eukaryotes/viruses, please consider removing them via proper mapping. If the origin of contamination is unknown, or if you want to estimate the mean genome size of prokaryotes, you may consider enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
 
 We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`), prokaryotic reads (fungal and other reads removed with `minimap2`) randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
 
