@@ -13,11 +13,11 @@ def cli(argv=sys.argv):
     Entry point for command line interface.
     '''
     parser = ArgumentParser(description='Melon: \
-        long-read targeting taxonomic profiling and genome copies estimation \
-        phylogenetic marker genes.', add_help=False)
+        metagenomic long-read-based taxonomic identification and quantification', add_help=False)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     additional = parser.add_argument_group('additional arguments')
+    additional_em = parser.add_argument_group('additional arguments for EM')
 
     parser.add_argument(
         'FILE',
@@ -104,11 +104,29 @@ def cli(argv=sys.argv):
         default=0.9,
         help='Min. secondary-to-primary score ratio to report secondary alignments (-p in minimap2). [0.9]')
 
+    additional_em.add_argument(
+        '-a',
+        metavar='INT',
+        type=int,
+        default=1000,
+        help='Terminal condition - max. iteration. [1000]')
+
+    additional_em.add_argument(
+        '-c',
+        metavar='FLOAT',
+        type=float,
+        default=1e-10,
+        help='Terminal condition - epsilon (precision). [1e-10]')
+
     parser.add_argument('-v', '--version', action='version', version=__version__, help=SUPPRESS)
     parser.add_argument('-h', '--help', action='help', help=SUPPRESS)
 
     if len(argv) == 1:
-        print("             __        \n  __ _  ___ / /__  ___ \n /  ' \\/ -_) / _ \\/ _ \\\n/_/_/_/\\__/_/\\___/_//_/ ver. {}\n".format(__version__))
+        print("\
+             __         \n\
+  __ _  ___ / /__  ___  \n\
+ /  ' \/ -_) / _ \/ _ \ \n\
+/_/_/_/\__/_/\___/_//_/ ver. {}\n".format(__version__))
 
     opt = parser.parse_args(argv[1:])
     run(opt)
@@ -136,7 +154,10 @@ def run(opt):
         sys.exit(2)
     else:
         files = [os.path.basename(x) for x in glob.glob(os.path.join(opt.db, '*'))]
-        if 'metadata.tsv' not in files or 'prot.dmnd' not in files or len([x for x in files if 'nucl' in x and '.mmi' in x]) != 16:
+        if (
+            'metadata.tsv' not in files or 'prot.dmnd' not in files or
+            len([x for x in files if 'nucl' in x and '.mmi' in x]) != 16
+        ):
             logger.critical('Database <{}> is not complete or not indexed.'.format(opt.db))
             sys.exit(2)
 
@@ -153,24 +174,23 @@ def run(opt):
 
     ## check for logical cores
     if opt.threads > os.cpu_count():
-        logger.warning('Threads <{}> exceeds number of available logical cores, will use <{}> threads instead.'.format(opt.threads, os.cpu_count()))
+        logger.warning(
+            'Threads <{}> exceeds available logical cores, will use <{}> instead.'.format(opt.threads, os.cpu_count()))
         opt.threads = os.cpu_count()
     os.environ['OMP_NUM_THREADS'] = str(opt.threads)
 
     ## run
-    for i, file in enumerate(opt.FILE):
+    for index, file in enumerate(opt.FILE):
         if len(opt.FILE) > 1:
-            logger.info('Processing file <{}> ({}/{}) ...'.format(file, i + 1, len(opt.FILE)))
+            logger.info('Processing file <{}> ({}/{}) ...'.format(file, index + 1, len(opt.FILE)))
 
-        GenomeProfiler(file, opt.output, opt.threads).run(
-            db=opt.db,
-            db_kraken=opt.db_kraken,
-            skip_profile=opt.skip_profile,
-            skip_clean=opt.skip_clean,
+        GenomeProfiler(file, opt.db, opt.output, opt.threads).run(
+            db_kraken=opt.db_kraken, skip_profile=opt.skip_profile, skip_clean=opt.skip_clean,
             max_target_seqs=opt.m, evalue=opt.e, identity=opt.i, subject_cover=opt.s,
-            secondary_num=opt.n, secondary_ratio=opt.p)
+            secondary_num=opt.n, secondary_ratio=opt.p,
+            max_iteration=opt.a, epsilon=opt.c)
 
-        if i == len(opt.FILE) - 1:
+        if index == len(opt.FILE) - 1:
             logger.info('Done.')
         else:
             logger.info('Done.\n')

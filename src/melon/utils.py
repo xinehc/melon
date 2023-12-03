@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 import logging
-import numpy as np
+
 
 ## setup logger format
 logging.basicConfig(
@@ -50,39 +50,6 @@ def get_filename(file, output=None, extension=None):
     if extension is not None:
         filename += extension
     return filename
-
-
-def reassign_taxonomy(matrix, eps=1e-5, max_iteration=100):
-    '''
-    Reassign multi-mapped reads with EM.
-    '''
-    n_reads, n_mappings = matrix.shape
-
-    ## init
-    p_reads = np.zeros((n_reads, n_mappings))
-    p_mappings = np.ones(n_mappings) / n_mappings
-    p_mappings_hist = p_mappings.copy()
-
-    iteration = 0
-    while iteration < max_iteration:
-        iteration += 1
-
-        ## e-step
-        p_reads = np.divide(p_mappings * matrix, np.dot(matrix, p_mappings).reshape(-1, 1))
-
-        ## m-step
-        p_mappings = np.sum(p_reads, axis=0) / n_reads
-
-        ## check convergence
-        if np.sum(np.abs(p_mappings - p_mappings_hist)) < eps:
-            break
-
-        ## update hist
-        np.copyto(p_mappings_hist, p_mappings)
-
-    ## return assignments
-    assignments = [np.where(row == row.max())[0].tolist() for row in p_reads]
-    return assignments
 
 
 def extract_sequences(file, ids):

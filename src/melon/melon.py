@@ -1,7 +1,9 @@
 import glob
 import json
-from collections import defaultdict
+import numpy as np
 
+from collections import defaultdict
+from scipy.sparse import csr_matrix
 from .utils import *
 
 
@@ -9,8 +11,9 @@ class GenomeProfiler:
     '''
     Profile taxonomic genomes using a set of marker genes.
     '''
-    def __init__(self, file, output, threads=os.cpu_count()):
+    def __init__(self, file, db, output, threads=os.cpu_count()):
         self.file = file
+        self.db = db
         self.output = output
         self.threads = threads
 
@@ -23,12 +26,11 @@ class GenomeProfiler:
         ## genome copies
         self.copies = {'bacteria': 0, 'archaea': 0}
 
-        ## temporary variables for diamond's hits or minimap2's mappings
-        self.hits, self.maps = [], []
+        ## temporary variables for diamond's hits or minimap2's alignments
+        self.hits, self.alignments = [], []
 
         ## taxonomy assignments
         self.assignments = {}
-
 
     def run_kraken(self, db_kraken):
         '''
@@ -43,14 +45,13 @@ class GenomeProfiler:
             self.file,
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-
     def parse_kraken(self):
         '''
         Parse kraken2's output by
             1: recording the ids of eukaryota (2759), viruses (10239), other entries (2787854).
             2: adding the id of the sequence to a negative set.
         '''
-        seqid, taxid = set(), set()
+        qseqids, taxids = set(), set()
         record = False
         with open(get_filename(self.file, self.output, '.kraken.report.tmp')) as f:
             for line in f:
@@ -59,25 +60,24 @@ class GenomeProfiler:
                     record = ls[5].strip() in {'Eukaryota', 'Viruses', 'other entries'}
 
                 if record:
-                    taxid.add(ls[4])
+                    taxids.add(ls[4])
 
         with open(get_filename(self.file, self.output, '.kraken.output.tmp')) as f:
             for line in f:
                 ls = line.rstrip().split('\t')
-                if ls[2] in taxid:
-                    seqid.add(ls[1])
+                if ls[2] in taxids:
+                    qseqids.add(ls[1])
 
-        self.nset.update(seqid)
+        self.nset.update(qseqids)
 
-
-    def run_diamond(self, db, max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75):
+    def run_diamond(self, max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75):
         '''
         Run diamond to get total prokaryotic genome copies.
         '''
-        outfmt = ['qseqid', 'sseqid', 'pident', 'length', 'qlen', 'qstart', 'qend', 'slen', 'sstart', 'send', 'evalue', 'bitscore']
+        outfmt = ['qseqid', 'sseqid', 'pident', 'length', 'qlen', 'qstart', 'qend', 'slen', 'sstart', 'send', 'evalue']
         subprocess.run([
             'diamond', 'blastx',
-            '--db', os.path.join(db, 'prot.dmnd'),
+            '--db', os.path.join(self.db, 'prot.dmnd'),
             '--query', self.file,
             '--out', get_filename(self.file, self.output, '.diamond.tmp'),
             '--outfmt', '6', *outfmt,
@@ -87,13 +87,12 @@ class GenomeProfiler:
             '--threads', str(self.threads)
         ], check=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
-
     def parse_diamond(self):
         '''
         Parse diamond's output and record the hits.
         '''
-        qrange = defaultdict(set)
-        srange = {}
+        qcoords = defaultdict(set)
+        scovs = {}
 
         with open(get_filename(self.file, self.output, '.diamond.tmp')) as f:
             for line in f:
@@ -106,65 +105,63 @@ class GenomeProfiler:
                 ## bypass non-prokaryotic reads
                 if qseqid not in self.nset:
                     if (
-                        qseqid not in qrange or
-                        all(compute_overlap((qstart, qend, *x), max) < 0.25 for x in qrange[qseqid])
+                        qseqid not in qcoords or
+                        all(compute_overlap((qstart, qend, *qcoord), max) < 0.25 for qcoord in qcoords[qseqid])
                     ):
-                        qrange[qseqid].add((qstart, qend))
+                        qcoords[qseqid].add((qstart, qend))
 
                         ss = sseqid.split('-')
-                        gene, kingdom = ss[0], ss[-2]
+                        family, kingdom = ss[0], ss[-2]
                         if (
-                            (gene in self.bset and kingdom == 'bacteria') or
-                            (gene in self.aset and kingdom == 'archaea')
+                            (family in self.bset and kingdom == 'bacteria') or
+                            (family in self.aset and kingdom == 'archaea')
                         ):
-                            if sseqid not in srange:
-                                srange[sseqid] = np.zeros(slen)
-                            srange[sseqid][range(sstart, send)] += 1
+                            if sseqid not in scovs:
+                                scovs[sseqid] = np.zeros(slen)
+                            scovs[sseqid][range(sstart, send)] += 1
 
                             ## append qseqid and coordinates for back-tracing
-                            self.hits.append([qseqid, kingdom, gene, qstart, qend])
+                            self.hits.append([qseqid, kingdom, family, qstart, qend])
 
-        for key, val in srange.items():
-            cut = round(len(val) / 4)  # in this case same as counting hits since all hits have subject cover > 75%
-            kingdom = key.split('-')[-2]
+        for sseqid, scov in scovs.items():
+            cut = round(len(scov) / 4) # in this case same as counting hits since all hits have subject cover > 75%
+            kingdom = sseqid.split('-')[-2]
             if kingdom == 'bacteria':
-                self.copies[kingdom] += np.mean(val[cut:-cut]) / len(self.bset)
+                self.copies[kingdom] += np.mean(scov[cut:-cut]) / len(self.bset)
             else:
-                self.copies[kingdom] += np.mean(val[cut:-cut]) / len(self.aset)
+                self.copies[kingdom] += np.mean(scov[cut:-cut]) / len(self.aset)
 
-
-    def run_minimap(self, db, secondary_num=2147483647, secondary_ratio=0.9):
+    def run_minimap(self, secondary_num=2147483647, secondary_ratio=0.9):
         '''
         Run minimap2 to get taxonomic profiles.
         '''
         with open(get_filename(self.file, self.output, '.sequence.tmp'), 'w') as w:
-            w.write(extract_sequences(self.file, {x[0] for x in self.hits}))
+            w.write(extract_sequences(self.file, {hit[0] for hit in self.hits}))
 
-        ## consider each kingdom + gene separately
-        genes = defaultdict(set)
-        for i in self.hits:
-            genes[i[1] + '.' + i[2].replace('/', '_')].add(i[0])
+        ## consider each kingdom + family separately
+        qseqids = defaultdict(set)
+        for hit in self.hits:
+            qseqids[hit[1] + '.' + hit[2].replace('/', '_')].add(hit[0])
 
         with open(get_filename(self.file, self.output, '.minimap.tmp'), 'w') as w:
-            for key, val in genes.items():
-                sequences = extract_sequences(get_filename(self.file, self.output, '.sequence.tmp'), val)
+            for family, qseqid in qseqids.items():
+                sequences = extract_sequences(get_filename(self.file, self.output, '.sequence.tmp'), qseqid)
                 subprocess.run([
                     'minimap2',
                     '-cx', 'map-ont',
                     '-f', '0',
                     '-N', str(secondary_num), '-p', str(secondary_ratio),
                     '-t', str(self.threads),
-                    os.path.join(db, 'nucl.' + key + '.mmi'), '-',
+                    os.path.join(self.db, 'nucl.' + family + '.mmi'), '-',
                 ], check=True, stdout=w, stderr=subprocess.DEVNULL, input=sequences, text=True)
-
 
     def parse_minimap(self):
         '''
-        Parse minimap2's output and record the mappings.
+        Parse minimap2's output and record alignments.
         '''
-        coordinates = defaultdict(set)
-        for i in self.hits:
-            coordinates[i[0]].add(tuple(i[-2:]))
+        qcoords = defaultdict(set)
+        for hit in self.hits:
+            qcoords[hit[0]].add(tuple(hit[-2:]))
 
         with open(get_filename(self.file, self.output, '.minimap.tmp')) as f:
             for line in f:
@@ -173,43 +170,42 @@ class GenomeProfiler:
 
                 AS = int(ls[14].split('AS:i:')[-1])
                 MS = int(ls[13].split('ms:i:')[-1])
-                ID = 1 - float(ls[19].split('de:f:')[-1]) if ls[16] == 'tp:A:S' or ls[16] == 'tp:A:i' else 1 - float(ls[20].split('de:f:')[-1])
+                ID = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1])
 
-                ## filter out non-overlapping mappings
-                for i in coordinates[qseqid]:
-                    if compute_overlap((qstart, qend, *i)) > 0:
-                        self.maps.append([qseqid, sseqid, AS, MS, ID])
+                ## filter out non-overlapping alignments
+                for qcoord in qcoords[qseqid]:
+                    if compute_overlap((qstart, qend, *qcoord)) > 0:
+                        self.alignments.append([qseqid, sseqid, AS, MS, ID])
 
-
-    def postprocess(self, db):
+    def postprocess(self, max_iteration=1000, epsilon=1e-10):
         '''
         Post-processing and label reassignment using EM.
         '''
         accession2lineage = {}
-        with open(os.path.join(db, 'metadata.tsv')) as f:
+        with open(os.path.join(self.db, 'metadata.tsv')) as f:
             next(f)
             for line in f:
                 ls = line.rstrip().split('\t')
                 accession2lineage[ls[0]] = ';'.join(ls[1:])
 
         ## paste assigned taxonomy then sort
-        maps = sorted([
-            [*x, accession2lineage[x[1].rsplit('_', 1)[0]]] for x in self.maps
-        ], key=lambda x: (x[0], x[2], x[3], x[4]), reverse=True)
+        self.alignments = sorted([
+            [*alignment, accession2lineage[alignment[1].rsplit('_', 1)[0]]] for alignment in self.alignments
+        ], key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True)
 
         ## keep only the first per qseqid and lineage, remove all inferior alignments
         data = []
         duplicates = set()
         max_scores = defaultdict(lambda: {'AS': 0, 'MS': 0, 'ID': 0})
 
-        for row in maps:
-            max_scores[row[0]]['AS'] = max(max_scores[row[0]]['AS'], row[2])
-            max_scores[row[0]]['MS'] = max(max_scores[row[0]]['MS'], row[3])
-            max_scores[row[0]]['ID'] = max(max_scores[row[0]]['ID'], row[4])
+        for alignment in self.alignments:
+            max_scores[alignment[0]]['AS'] = max(max_scores[alignment[0]]['AS'], alignment[2])
+            max_scores[alignment[0]]['MS'] = max(max_scores[alignment[0]]['MS'], alignment[3])
+            max_scores[alignment[0]]['ID'] = max(max_scores[alignment[0]]['ID'], alignment[4])
 
-            if (row[0], row[-1]) not in duplicates:
-                data.append(row)
-                duplicates.add((row[0], row[-1]))
+            if (alignment[0], alignment[-1]) not in duplicates:
+                data.append(alignment)
+                duplicates.add((alignment[0], alignment[-1]))
 
         data = [row for row in data if (
             row[2] > max_scores[row[0]]['AS'] * 0.99 or
@@ -219,43 +215,82 @@ class GenomeProfiler:
 
         ## create a matrix then fill
         qseqids, lineages = np.unique([row[0] for row in data]), np.unique([row[-1] for row in data])
-        qseqid2index, lineage2index = {qseqid: index for index, qseqid in enumerate(qseqids)}, {lineage: index for index, lineage in enumerate(lineages)}
+        qseqid2index = {qseqid: index for index, qseqid in enumerate(qseqids)}
+        lineage2index = {lineage: index for index, lineage in enumerate(lineages)}
 
-        matrix = np.zeros((len(qseqids), len(lineages)), dtype=int)
-        for row in data:
-            matrix[qseqid2index[row[0]], lineage2index[row[-1]]] += 1
+        rows = [qseqid2index[row[0]] for row in data]
+        cols = [lineage2index[row[-1]] for row in data]
+        matrix = csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(len(qseqids), len(lineages)), dtype=int)
 
         ## run EM using the count matrix as input
-        assignments = reassign_taxonomy(matrix)
-        ties = defaultdict(list)
+        n_reads, n_mappings = matrix.shape
+
+        ## init
+        p_mappings = np.ones((1, n_mappings)) / n_mappings
+        p_mappings_hist = p_mappings.copy()
+
+        iteration = 0
+        while iteration < max_iteration:
+            iteration += 1
+
+            ## e-step
+            p_reads = matrix.multiply(p_mappings) / matrix.dot(p_mappings.T)
+
+            ## m-step
+            p_mappings = np.sum(p_reads, axis=0) / n_reads
+
+            ## check convergence
+            if np.sum(np.abs(p_mappings - p_mappings_hist)) < epsilon:
+                break
+
+            ## update hist
+            np.copyto(p_mappings_hist, p_mappings)
+
+        ## return assignments
+        assignments = []
+        for row in p_reads.tocsr():
+            row = row.toarray().squeeze()
+            assignments.append(np.where(row == row.max())[0].tolist())
+
+        ties = defaultdict(set)
         for qseqid, lineage in enumerate(assignments):
             if len(assignment := lineages[lineage]) > 1:
-                ties[tuple(assignment)].append(qseqids[qseqid])
+                ties[tuple(assignment)].add(qseqids[qseqid])
             else:
                 self.assignments[qseqids[qseqid]] = assignment[0]
 
-        ## resolve ties for equal probability cases using AS and ID
-        for key, val in ties.items():
-            target = [row for row in data if row[-1] in key and row[0] in val]
+        ## resolve ties for equal probability cases using AS, MS and ID
+        if ties:
+            qset = set.union(*(set(qseqid) for qseqid in ties.values()))
+            data = [row for row in data if row[0] in qset]
 
-            scores = defaultdict(lambda: defaultdict(list))
-            for row in target:
-                scores[row[-1]]['AS'].append(row[2])
-                scores[row[-1]]['MS'].append(row[3])
-                scores[row[-1]]['ID'].append(row[4])
+            for lineages, qseqids in ties.items():
+                target = [row for row in data if row[0] in qseqids and row[-1] in lineages]
 
-            ## if still tie in AS and de, choose the one with known species name
-            target = sorted([
-                [np.mean(val['AS']), np.mean(val['MS']), np.mean(val['ID']), not bool(re.search(r' sp\.$| sp\. | sp[0-9]+', key.split(';')[-1])), key] for key, val in scores.items()
-            ], reverse=True)[0][-1]
+                scores = defaultdict(lambda: defaultdict(list))
+                for row in target:
+                    scores[row[-1]]['AS'].append(row[2])
+                    scores[row[-1]]['MS'].append(row[3])
+                    scores[row[-1]]['ID'].append(row[4])
 
-            for qseqid in val:
-                self.assignments[qseqid] = target
+                ## if all the same, choose the one with known species name
+                target = sorted([
+                    [
+                        np.mean(score['AS']),
+                        np.mean(score['MS']),
+                        np.mean(score['ID']),
+                        not bool(re.search(r' sp\.$| sp\. | sp[0-9]+', lineage.split(';')[-1])),
+                        lineage
+                    ] for lineage, score in scores.items()
+                ], reverse=True)[0][-1]
 
+                for qseqid in qseqids:
+                    self.assignments[qseqid] = target
 
-    def run(self, db, db_kraken=None, skip_profile=False, skip_clean=False,
+    def run(self, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
-            secondary_num=2147483647, secondary_ratio=0.9):
+            secondary_num=2147483647, secondary_ratio=0.9,
+            max_iteration=1000, epsilon=1e-10):
         '''
         Run the pipeline.
         '''
@@ -266,72 +301,84 @@ class GenomeProfiler:
             logger.info('... removed {} putatively non-prokaryotic reads.'.format(len(self.nset)))
 
         logger.info('Estimating genome copies ...')
-        self.run_diamond(db, max_target_seqs, evalue, identity, subject_cover)
+        self.run_diamond(max_target_seqs, evalue, identity, subject_cover)
         self.parse_diamond()
         logger.info('... found {} copies of genomes (bacteria: {}; archaea: {}).'.format(
             sum(self.copies.values()), self.copies['bacteria'], self.copies['archaea']))
 
         if not skip_profile:
             logger.info('Assigning taxonomy ...')
-            self.run_minimap(db, secondary_num, secondary_ratio)
+            self.run_minimap(secondary_num, secondary_ratio)
             self.parse_minimap()
-            self.postprocess(db)
+            self.postprocess(max_iteration, epsilon)
 
             ## fill missing ones according to hits
-            replacement = {
-                'bacteria': ';'.join(['2|Bacteria'] + ['0|unclassified Bacteria ' + x.lower() for x in self.ranks[1:]]),
-                'archaea': ';'.join(['2157|Archaea'] + ['0|unclassified Archaea ' + x.lower() for x in self.ranks[1:]])
+            replacements = {
+                'bacteria': ';'.join(['2|Bacteria'] + ['0|unclassified Bacteria ' + rank for rank in self.ranks[1:]]),
+                'archaea': ';'.join(['2157|Archaea'] + ['0|unclassified Archaea ' + rank for rank in self.ranks[1:]])
             }
 
-            ## fit gtdb style
+            ## fit GTDB style
             if self.assignments and '|' not in next(iter(self.assignments.values())).split(';')[0]:
-                replacement = {key: ';'.join(x.split('|')[-1] for x in val.split(';')) for key, val in replacement.items()}
+                replacements = {kingdom: ';'.join(
+                    rank.split('|')[-1] for rank in replacement.split(';')
+                ) for kingdom, replacement in replacements.items()}
 
             ## count assigned taxonomic labels
+            self.hits = [[*hit, self.assignments.get(hit[0], replacements.get(hit[1]))] for hit in self.hits]
             counts, total_counts = defaultdict(lambda: 0), defaultdict(lambda: 0)
-            for i in self.hits:
-                counts[(self.assignments.get(i[0], replacement.get(i[1])), i[1])] += 1
-                total_counts[i[1]] += 1
+            for hit in self.hits:
+                total_counts[hit[1]] += 1
+                counts[(hit[-1], hit[1])] += 1
+
+            copies = defaultdict(lambda: 0)
+            for lineage, count in counts.items():
+                copies[lineage[0]] += count * self.copies[lineage[1]] / total_counts[lineage[1]]
+            total_copies = sum(copies.values())
 
             # generate a profile output
             self.profile = sorted([
-                [*key[0].split(';'), val * self.copies[key[1]] / total_counts[key[1]], val / sum(total_counts.values())] for key, val in counts.items()
-            ], key=lambda x: (x[-2], x[-3]))
+                [*lineage.split(';'), copy, copy / total_copies] for lineage, copy in copies.items()
+            ], key=lambda row: (row[-2], row[-3]))
 
             richness = {'bacteria': 0, 'archaea': 0}
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
                 w.write('\t'.join(self.ranks + ['copy', 'abundance']) + '\n')
-                for line in self.profile:
-                    if not re.search('unclassified (Bacteria|Archaea) species', line[6]):
-                        richness[line[0].split('|')[-1].lower()] += 1
-                    w.write('\t'.join(str(x) for x in line) + '\n')
+
+                for row in self.profile:
+                    if not re.search('unclassified (Bacteria|Archaea) species', row[6]):
+                        richness[row[0].split('|')[-1].lower()] += 1
+                    w.write('\t'.join(str(x) for x in row) + '\n')
 
             logger.info('... found {} unique species (bacteria: {}; archaea: {}).'.format(
                 sum(richness.values()), richness['bacteria'], richness['archaea']))
 
         else:
             self.profile = sorted([
-                ['2|Bacteria', self.copies['bacteria'], self.copies['bacteria'] / sum(self.copies.values())],
-                ['2157|Archaea', self.copies['archaea'], self.copies['archaea'] / sum(self.copies.values())]
-            ], key=lambda x: (x[-2], x[-3]))
+                ['Bacteria', self.copies['bacteria'], self.copies['bacteria'] / sum(self.copies.values())],
+                ['Archaea', self.copies['archaea'], self.copies['archaea'] / sum(self.copies.values())]
+            ], key=lambda row: (row[-2], row[-3]))
 
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
                 w.write('\t'.join(['superkingdom', 'copy', 'abundance']) + '\n')
-                for line in self.profile:
-                    if line[1] != 0:
-                        w.write('\t'.join(str(x) for x in line) + '\n')
+
+                for row in self.profile:
+                    if row[1] != 0:
+                        w.write('\t'.join(str(x) for x in row) + '\n')
 
         ## save reads
-        reads = {x: {'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for x in self.nset}
+        reads = {qseqid: {'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for qseqid in self.nset}
         if not skip_profile:
-            reads.update({x[0]: {'remark': 'marker-gene-containing', 'lineage': self.assignments.get(x[0], replacement.get(x[1]))} for x in self.hits})
+            reads.update({hit[0]: {
+                'remark': 'marker-gene-containing', 'lineage': hit[-1]} for hit in self.hits})
         else:
-            reads.update({x[0]: {'remark': 'marker-gene-containing', 'lineage': x[1]} for x in self.hits})
+            reads.update({hit[0]: {
+                'remark': 'marker-gene-containing', 'lineage': hit[1].capitalize()} for hit in self.hits})
 
         with open(get_filename(self.file, self.output, '.json'), 'w') as w:
             json.dump(dict(sorted(reads.items())), w, indent=4)
 
         ## clean up
         if not skip_clean:
-            for f in glob.glob(get_filename(self.file, self.output, '.*.tmp')):
-                os.remove(f)
+            for file in glob.glob(get_filename(self.file, self.output, '.*.tmp')):
+                os.remove(file)

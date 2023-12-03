@@ -1,5 +1,5 @@
 # Melon
-Melon: **me**tagenomic **lon**g-read-based taxonomic identification and quantification using marker genes
+Melon: **me**tagenomic **lon**g-read-based taxonomic identification and quantification
 
 ## Quick start
 ### Installation
