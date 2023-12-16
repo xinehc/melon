@@ -42,7 +42,7 @@ rm -rf database/*.fa
 We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`), prokaryotic reads (fungal and other reads removed with `minimap2`) randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
 
 ```bash
-wget -q --show-progress https://figshare.com/ndownloader/files/42695515/example.fa.gz
+wget -q --show-progress https://figshare.com/ndownloader/files/42847672/example.fa.gz
 melon example.fa.gz -d database -o .
 ```
 
@@ -101,6 +101,7 @@ Run with argument `-k/-db-kraken`:
 melon *.fa -d database -o . -k database_kraken
 ```
 
+## Miscellaneous
 ### Statistics of influent/effluent samples with/without pre-filter
 Both samples were collected from the Shatin wastewater treatment plant, sequenced with ONT SQK-NBD114 & R10.4.1 on PromethION, basecalled with Guppy v6.5.7.
 
@@ -234,4 +235,4 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
    </tbody>
 </table>
 
-Tested on MacBook Pro 2021, Apple M1 Max, 64 GB memory, macOS Sonoma. Melon v0.1.0, NCBI database (ver. 2023-07-31) and Kraken database (ver. 2023-06-05). Mean genome size is in unit of Mb. ARG abundance is in unit of copies per cell (exlcuding multidrug ARGs).
+Tested on MacBook Pro 2021, Apple M1 Max, 64 GB memory, macOS Sonoma. Melon v0.1.0, NCBI database (ver. 2023-07-31) and Kraken database (ver. 2023-06-05). Mean genome size is in unit of Mb. ARG abundance is in unit of copies per cell (exlcuding multidrug ARGs). Real time and peak resident set size are measured with `time`.
