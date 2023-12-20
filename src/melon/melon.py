@@ -213,6 +213,9 @@ class GenomeProfiler:
             row[4] > max_scores[row[0]]['ID'] * 0.999
         )]
 
+        # ## save pairwise gap-compressed identity for ANI calculation
+        self.identities = {(row[0], row[-1]): row[4] for row in data}
+
         ## create a matrix then fill
         qseqids, lineages = np.unique([row[0] for row in data]), np.unique([row[-1] for row in data])
         qseqid2index = {qseqid: index for index, qseqid in enumerate(qseqids)}
@@ -326,10 +329,12 @@ class GenomeProfiler:
 
             ## count assigned taxonomic labels
             self.hits = [[*hit, self.assignments.get(hit[0], replacements.get(hit[1]))] for hit in self.hits]
-            counts, total_counts = defaultdict(lambda: 0), defaultdict(lambda: 0)
+            counts, total_counts, lineage2identity = defaultdict(lambda: 0), defaultdict(lambda: 0), defaultdict(list)
+
             for hit in self.hits:
                 total_counts[hit[1]] += 1
                 counts[(hit[-1], hit[1])] += 1
+                lineage2identity[hit[-1]].append(self.identities.get((hit[0], hit[-1]), 0))
 
             copies = defaultdict(lambda: 0)
             for lineage, count in counts.items():
@@ -338,12 +343,12 @@ class GenomeProfiler:
 
             # generate a profile output
             self.profile = sorted([
-                [*lineage.split(';'), copy, copy / total_copies] for lineage, copy in copies.items()
-            ], key=lambda row: (row[-2], row[-3]))
+                [*lineage.split(';'), copy, copy / total_copies, np.mean(lineage2identity.get(lineage))] for lineage, copy in copies.items()
+            ], key=lambda row: (row[-3], row[-1], row[-4]))
 
             richness = {'bacteria': 0, 'archaea': 0}
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
-                w.write('\t'.join(self.ranks + ['copy', 'abundance']) + '\n')
+                w.write('\t'.join(self.ranks + ['copy', 'abundance', 'identity']) + '\n')
 
                 for row in self.profile:
                     if not re.search('unclassified (Bacteria|Archaea) species', row[6]):
