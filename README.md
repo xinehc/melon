@@ -55,17 +55,17 @@ INFO: ... found 8 unique species (bacteria: 8; archaea: 0).
 INFO: Done.
 ```
 
-The output file `*.tsv` contains the estimated genome copies for individual species and their corresponding relative abundances:
+The output file `*.tsv` contains the estimated genome copies for individual species, their corresponding relative abundances and gap-compressed ANI (average nucleotide identity between marker-gene-containing reads and reference genome clusters) values:
 ```
-...    species                               copy     abundance
-...    287|Pseudomonas aeruginosa            2.125    0.07727272727272727
-...    96241|Bacillus spizizenii             2.875    0.10454545454545454
-...    1351|Enterococcus faecalis            3.0      0.10909090909090909
-...    28901|Salmonella enterica             3.125    0.11363636363636363
-...    562|Escherichia coli                  3.5      0.12727272727272726
-...    1639|Listeria monocytogenes           3.75     0.13636363636363635
-...    1280|Staphylococcus aureus            3.875    0.1409090909090909
-...    1613|Limosilactobacillus fermentum    5.25     0.19090909090909092
+...    species                               copy     abundance              identity
+...    287|Pseudomonas aeruginosa            2.125    0.07727272727272727    0.9570235294117647
+...    96241|Bacillus spizizenii             2.875    0.10454545454545454    0.9617130434782607
+...    1351|Enterococcus faecalis            3.0      0.10909090909090909    0.9616333333333333
+...    28901|Salmonella enterica             3.125    0.11363636363636363    0.9525159999999999
+...    562|Escherichia coli                  3.5      0.12727272727272726    0.9589107142857143
+...    1639|Listeria monocytogenes           3.75     0.13636363636363635    0.9627300000000001
+...    1280|Staphylococcus aureus            3.875    0.1409090909090909     0.9599290322580646
+...    1613|Limosilactobacillus fermentum    5.25     0.19090909090909092    0.9644999999999998
 ```
 
 The output file `*.json` contains the lineage and remark of each processed reads.

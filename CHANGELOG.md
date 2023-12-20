@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.2] - 2023-12-20
+### Added
+- Add gap-compressed ANI to output.
+
 ## [0.1.1] - 2023-11-29
 ### Added
 - Add options to control EM early stop.
