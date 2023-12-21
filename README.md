@@ -236,3 +236,6 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
 </table>
 
 Tested on MacBook Pro 2021, Apple M1 Max, 64 GB memory, macOS Sonoma. Melon v0.1.0, NCBI database (ver. 2023-07-31) and Kraken database (ver. 2023-06-05). Mean genome size is in unit of Mb. ARG abundance is in unit of copies per cell (exlcuding multidrug ARGs). Real time and peak resident set size are measured with `time`.
+
+## Citation
+Chen, Xi, Xiaole Yin, Xianghui Shi, Weifu Yan, Yu Yang, Lei Liu, and Tong Zhang. "Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes." bioRxiv (2023).
