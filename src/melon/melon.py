@@ -92,15 +92,12 @@ class GenomeProfiler:
         Parse diamond's output and record the hits.
         '''
         qcoords = defaultdict(set)
-        scovs = {}
 
         with open(get_filename(self.file, self.output, '.diamond.tmp')) as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 qseqid, sseqid = ls[0], ls[1]
                 qstart, qend = sort_coordinate(int(ls[5]), int(ls[6]))
-                sstart, send = sort_coordinate(int(ls[8]), int(ls[9]))
-                slen = int(ls[7])
 
                 ## bypass non-prokaryotic reads
                 if qseqid not in self.nset:
@@ -116,20 +113,9 @@ class GenomeProfiler:
                             (family in self.bset and kingdom == 'bacteria') or
                             (family in self.aset and kingdom == 'archaea')
                         ):
-                            if sseqid not in scovs:
-                                scovs[sseqid] = np.zeros(slen)
-                            scovs[sseqid][range(sstart, send)] += 1
-
                             ## append qseqid and coordinates for back-tracing
                             self.hits.append([qseqid, kingdom, family, qstart, qend])
-
-        for sseqid, scov in scovs.items():
-            cut = round(len(scov) / 4) # in this case same as counting hits since all hits have subject cover > 75%
-            kingdom = sseqid.split('-')[-2]
-            if kingdom == 'bacteria':
-                self.copies[kingdom] += np.mean(scov[cut:-cut]) / len(self.bset)
-            else:
-                self.copies[kingdom] += np.mean(scov[cut:-cut]) / len(self.aset)
+                            self.copies[sseqid.split('-')[-2]] += 0.125
 
     def run_minimap(self, secondary_num=2147483647, secondary_ratio=0.9):
         '''
