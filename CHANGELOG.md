@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.3] - 2024-03-29
+### Changed
+- Change alignment filtering criteria: make `AS` cutoff more stringent, drop `MS`. See [7cc6dbd](https://github.com/xinehc/melon/commit/7cc6dbd866027cf5c1adaa5c69ed7919d8630607) for details.
+
+### Fixed
+- Fix a bug causing total genome copies not being properly calculated with diamond>=2.1.9.
+
+### Added
+- Output both gap-compressed and gap-uncompressed (BLAST-like) identity.
+- Refine output format.
+
 ## [0.1.2] - 2023-12-20
 ### Added
 - Add gap-compressed ANI to output.
