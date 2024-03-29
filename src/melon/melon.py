@@ -155,13 +155,13 @@ class GenomeProfiler:
                 qstart, qend, qseqid, sseqid = int(ls[2]), int(ls[3]), ls[0], ls[5]
 
                 AS = int(ls[14].split('AS:i:')[-1])
-                MS = int(ls[13].split('ms:i:')[-1])
-                ID = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1])
+                DE = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1]) # gap-compressed identity
+                ID = int(ls[9]) / int(ls[10]) # gap-uncompressed identity
 
                 ## filter out non-overlapping alignments
                 for qcoord in qcoords[qseqid]:
                     if compute_overlap((qstart, qend, *qcoord)) > 0:
-                        self.alignments.append([qseqid, sseqid, AS, MS, ID])
+                        self.alignments.append([qseqid, sseqid, AS, DE, ID])
 
     def postprocess(self, max_iteration=1000, epsilon=1e-10):
         '''
@@ -174,33 +174,29 @@ class GenomeProfiler:
                 ls = line.rstrip().split('\t')
                 accession2lineage[ls[0]] = ';'.join(ls[1:])
 
-        ## paste assigned taxonomy then sort
-        self.alignments = sorted([
-            [*alignment, accession2lineage[alignment[1].rsplit('_', 1)[0]]] for alignment in self.alignments
-        ], key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True)
-
-        ## keep only the first per qseqid and lineage, remove all inferior alignments
+        ## alignment filtering based on AS, DE, and ID, keep only the first per qseqid and lineage, remove all inferior ones
         data = []
         duplicates = set()
-        max_scores = defaultdict(lambda: {'AS': 0, 'MS': 0, 'ID': 0})
+        max_scores = defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0})
 
         for alignment in self.alignments:
             max_scores[alignment[0]]['AS'] = max(max_scores[alignment[0]]['AS'], alignment[2])
-            max_scores[alignment[0]]['MS'] = max(max_scores[alignment[0]]['MS'], alignment[3])
+            max_scores[alignment[0]]['DE'] = max(max_scores[alignment[0]]['DE'], alignment[3])
             max_scores[alignment[0]]['ID'] = max(max_scores[alignment[0]]['ID'], alignment[4])
 
-            if (alignment[0], alignment[-1]) not in duplicates:
-                data.append(alignment)
-                duplicates.add((alignment[0], alignment[-1]))
-
-        data = [row for row in data if (
-            row[2] > max_scores[row[0]]['AS'] * 0.99 or
-            row[3] > max_scores[row[0]]['MS'] * 0.99 or
-            row[4] > max_scores[row[0]]['ID'] * 0.999
-        )]
+        for row in sorted(self.alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
+            if (
+                max(row[2] / 0.9975, row[2] + 25) > max_scores[row[0]]['AS'] or
+                row[3] / 0.9995 > max_scores[row[0]]['DE'] or
+                row[4] / 0.9995 > max_scores[row[0]]['ID']
+            ):
+                species = accession2lineage[row[1].rsplit('_', 1)[0]]
+                if (row[0], species) not in duplicates:
+                    data.append(row + [species])
+                    duplicates.add((row[0], species))
 
         # ## save pairwise gap-compressed identity for ANI calculation
-        self.identities = {(row[0], row[-1]): row[4] for row in data}
+        self.identities = {(row[0], row[-1]): (row[3], row[4]) for row in data}
 
         ## create a matrix then fill
         qseqids, lineages = np.unique([row[0] for row in data]), np.unique([row[-1] for row in data])
@@ -259,14 +255,14 @@ class GenomeProfiler:
                 scores = defaultdict(lambda: defaultdict(list))
                 for row in target:
                     scores[row[-1]]['AS'].append(row[2])
-                    scores[row[-1]]['MS'].append(row[3])
+                    scores[row[-1]]['DE'].append(row[3])
                     scores[row[-1]]['ID'].append(row[4])
 
                 ## if all the same, choose the one with known species name
                 target = sorted([
                     [
                         np.mean(score['AS']),
-                        np.mean(score['MS']),
+                        np.mean(score['DE']),
                         np.mean(score['ID']),
                         not bool(re.search(r' sp\.$| sp\. | sp[0-9]+', lineage.split(';')[-1])),
                         lineage
@@ -320,7 +316,7 @@ class GenomeProfiler:
             for hit in self.hits:
                 total_counts[hit[1]] += 1
                 counts[(hit[-1], hit[1])] += 1
-                lineage2identity[hit[-1]].append(self.identities.get((hit[0], hit[-1]), 0))
+                lineage2identity[hit[-1]].append(self.identities.get((hit[0], hit[-1]), (0, 0)))
 
             copies = defaultdict(lambda: 0)
             for lineage, count in counts.items():
@@ -329,8 +325,8 @@ class GenomeProfiler:
 
             # generate a profile output
             self.profile = sorted([
-                [*lineage.split(';'), copy, copy / total_copies, np.mean(lineage2identity.get(lineage))] for lineage, copy in copies.items()
-            ], key=lambda row: (row[-3], row[-1], row[-4]))
+                [*lineage.split(';'), copy, copy / total_copies, *np.mean(lineage2identity.get(lineage), axis=0)] for lineage, copy in copies.items()
+            ], key=lambda row: (row[8], row[10], row[7]))
 
             richness = {'bacteria': 0, 'archaea': 0}
             with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
@@ -339,7 +335,7 @@ class GenomeProfiler:
                 for row in self.profile:
                     if not re.search('unclassified (Bacteria|Archaea) species', row[6]):
                         richness[row[0].split('|')[-1].lower()] += 1
-                    w.write('\t'.join(str(x) for x in row) + '\n')
+                    w.write('\t'.join(row[:7] + [f'{row[7]:.3f}', f'{row[8]:e}', f'{row[9]:.4f}/{row[10]:.4f}']) + '\n')
 
             logger.info('... found {} unique species (bacteria: {}; archaea: {}).'.format(
                 sum(richness.values()), richness['bacteria'], richness['archaea']))
@@ -355,7 +351,7 @@ class GenomeProfiler:
 
                 for row in self.profile:
                     if row[1] != 0:
-                        w.write('\t'.join(str(x) for x in row) + '\n')
+                        w.write('\t'.join(row[:1] + [f'{row[1]:.3f}', f'{row[2]:e}']) + '\n')
 
         ## save reads
         reads = {qseqid: {'remark': 'putatively non-prokaryotic', 'lineage': 'others'} for qseqid in self.nset}
