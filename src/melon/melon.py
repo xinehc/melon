@@ -159,9 +159,8 @@ class GenomeProfiler:
                 ID = int(ls[9]) / int(ls[10]) # gap-uncompressed identity
 
                 ## filter out non-overlapping alignments
-                for qcoord in qcoords[qseqid]:
-                    if compute_overlap((qstart, qend, *qcoord)) > 0:
-                        self.alignments.append([qseqid, sseqid, AS, DE, ID])
+                if any(compute_overlap((qstart, qend, *qcoord))>0 for qcoord in qcoords[qseqid]):
+                    self.alignments.append([qseqid, sseqid, AS, DE, ID])
 
     def postprocess(self, max_iteration=1000, epsilon=1e-10):
         '''
