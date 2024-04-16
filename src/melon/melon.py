@@ -2,6 +2,8 @@ import glob
 import json
 import numpy as np
 
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 from collections import defaultdict
 from scipy.sparse import csr_matrix
 from .utils import *
@@ -130,16 +132,20 @@ class GenomeProfiler:
             qseqids[hit[1] + '.' + hit[2].replace('/', '_')].add(hit[0])
 
         with open(get_filename(self.file, self.output, '.minimap.tmp'), 'w') as w:
-            for family, qseqid in qseqids.items():
-                sequences = extract_sequences(get_filename(self.file, self.output, '.sequence.tmp'), qseqid)
-                subprocess.run([
-                    'minimap2',
-                    '-cx', 'map-ont',
-                    '-f', '0',
-                    '-N', str(secondary_num), '-p', str(secondary_ratio),
-                    '-t', str(self.threads),
-                    os.path.join(self.db, 'nucl.' + family + '.mmi'), '-',
-                ], check=True, stdout=w, stderr=subprocess.DEVNULL, input=sequences, text=True)
+            with logging_redirect_tqdm():
+                queue = tqdm(qseqids.items(), leave=False)
+                for family, qseqid in queue:
+                    queue.set_description(f'==> Processing <{family}>')
+
+                    sequences = extract_sequences(get_filename(self.file, self.output, '.sequence.tmp'), qseqid)
+                    subprocess.run([
+                        'minimap2',
+                        '-cx', 'map-ont',
+                        '-f', '0',
+                        '-N', str(secondary_num), '-p', str(secondary_ratio),
+                        '-t', str(self.threads),
+                        os.path.join(self.db, 'nucl.' + family + '.mmi'), '-',
+                    ], check=True, stdout=w, stderr=subprocess.DEVNULL, input=sequences, text=True)
 
     def parse_minimap(self):
         '''
@@ -194,7 +200,7 @@ class GenomeProfiler:
                     data.append(row + [species])
                     duplicates.add((row[0], species))
 
-        # ## save pairwise gap-compressed identity for ANI calculation
+        ## save pairwise gap-uncompressed/gap-compressed identity for ANI calculation
         self.identities = {(row[0], row[-1]): (row[3], row[4]) for row in data}
 
         ## create a matrix then fill
@@ -293,6 +299,8 @@ class GenomeProfiler:
         if not skip_profile:
             logger.info('Assigning taxonomy ...')
             self.run_minimap(secondary_num, secondary_ratio)
+
+            logger.info('Reassigning taxonomy ...')
             self.parse_minimap()
             self.postprocess(max_iteration, epsilon)
 

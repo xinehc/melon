@@ -153,10 +153,10 @@ def run(opt):
         logger.critical('Database folder <{}> does not exist.'.format(opt.db))
         sys.exit(2)
     else:
-        files = [os.path.basename(x) for x in glob.glob(os.path.join(opt.db, '*'))]
+        files = [os.path.basename(file) for file in glob.glob(os.path.join(opt.db, '*'))]
         if (
             'metadata.tsv' not in files or 'prot.dmnd' not in files or
-            len([x for x in files if 'nucl' in x and '.mmi' in x]) != 16
+            len([file for file in files if 'nucl' in file and '.mmi' in file]) != 16
         ):
             logger.critical('Database <{}> is not complete or not indexed.'.format(opt.db))
             sys.exit(2)
@@ -167,8 +167,8 @@ def run(opt):
             logger.critical('Kraken2 database folder <{}> does not exist.'.format(opt.db_kraken))
             sys.exit(2)
         else:
-            files = [os.path.basename(x) for x in glob.glob(os.path.join(opt.db_kraken, '*'))]
-            if 'ktaxonomy.tsv' not in files or len([x for x in files if 'database' in x]) != 7:
+            files = [os.path.basename(file) for file in glob.glob(os.path.join(opt.db_kraken, '*'))]
+            if 'ktaxonomy.tsv' not in files or len([file for file in files if 'database' in file]) != 7:
                 logger.critical('Kraken2 database <{}> is not complete.'.format(opt.db_kraken))
                 sys.exit(2)
 

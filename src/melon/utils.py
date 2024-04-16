@@ -10,6 +10,8 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S")
 
+logging.addLevelName(logging.INFO,
+                     f'\033[1m{logging.getLevelName(logging.INFO)}\033[1;0m')
 logging.addLevelName(logging.WARNING,
                      f'\033[1m\x1b[33;20m{logging.getLevelName(logging.WARNING)}\033[1;0m')
 logging.addLevelName(logging.CRITICAL,
