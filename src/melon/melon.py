@@ -152,27 +152,6 @@ class GenomeProfiler:
         '''
         Parse minimap2's output and record alignments.
         '''
-        qcoords = defaultdict(set)
-        for hit in self.hits:
-            qcoords[hit[0]].add(tuple(hit[-2:]))
-
-        with open(get_filename(self.file, self.output, '.minimap.tmp')) as f:
-            for line in f:
-                ls = line.rstrip().split('\t')
-                qstart, qend, qseqid, sseqid = int(ls[2]), int(ls[3]), ls[0], ls[5]
-
-                AS = int(ls[14].split('AS:i:')[-1])
-                DE = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1]) # gap-compressed identity
-                ID = int(ls[9]) / int(ls[10]) # gap-uncompressed identity
-
-                ## filter out non-overlapping alignments
-                if any(compute_overlap((qstart, qend, *qcoord))>0 for qcoord in qcoords[qseqid]):
-                    self.alignments.append([qseqid, sseqid, AS, DE, ID])
-
-    def postprocess(self, max_iteration=1000, epsilon=1e-10):
-        '''
-        Post-processing and label reassignment using EM.
-        '''
         accession2lineage = {}
         with open(os.path.join(self.db, 'metadata.tsv')) as f:
             next(f)
@@ -180,8 +159,31 @@ class GenomeProfiler:
                 ls = line.rstrip().split('\t')
                 accession2lineage[ls[0]] = ';'.join(ls[1:])
 
-        ## alignment filtering based on AS, DE, and ID, keep only the first per qseqid and lineage, remove all inferior ones
-        data = []
+        qcoords = defaultdict(set)
+        for hit in self.hits:
+            qcoords[hit[0]].add(tuple(hit[-2:]))
+        scores = defaultdict(lambda: defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0}))
+
+        with open(f'{self.outfile}.minimap.tmp') as f:
+            for line in f:
+                ls = line.rstrip().split('\t')
+                qstart, qend, qseqid, sseqid = int(ls[2]), int(ls[3]), ls[0], ls[5]
+                lineage = accession2lineage[sseqid.rsplit('_', 1)[0]]
+
+                AS_MAX, AS = scores[qseqid][lineage].get('AS', 0), int(ls[14].split('AS:i:')[-1])
+                DE_MAX, DE = scores[qseqid][lineage].get('DE', 0), 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1])
+                ID_MAX, ID = scores[qseqid][lineage].get('ID', 0), int(ls[9]) / int(ls[10])
+
+                ## filter out non-overlapping alignments
+                if AS > AS_MAX or DE > DE_MAX or ID > ID_MAX:
+                    if any(compute_overlap((qstart, qend, *qcoord))>0 for qcoord in qcoords[qseqid]):
+                        scores[qseqid][lineage]['AS'] = max(AS_MAX, AS)
+                        scores[qseqid][lineage]['DE'] = max(DE_MAX, DE)
+                        scores[qseqid][lineage]['ID'] = max(ID_MAX, ID)
+                        self.alignments.append([qseqid, sseqid, AS, DE, ID, lineage])
+
+        ## filter out low-score alignments
+        alignments = []
         duplicates = set()
         max_scores = defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0})
 
@@ -190,27 +192,31 @@ class GenomeProfiler:
             max_scores[alignment[0]]['DE'] = max(max_scores[alignment[0]]['DE'], alignment[3])
             max_scores[alignment[0]]['ID'] = max(max_scores[alignment[0]]['ID'], alignment[4])
 
-        for row in sorted(self.alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
+        for alignment in sorted(self.alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
             if (
-                max(row[2] / 0.9975, row[2] + 25) > max_scores[row[0]]['AS'] or
-                row[3] / 0.9995 > max_scores[row[0]]['DE'] or
-                row[4] / 0.9995 > max_scores[row[0]]['ID']
+                max(alignment[2] / 0.9975, alignment[2] + 25) > max_scores[alignment[0]]['AS'] or
+                alignment[3] / 0.9995 > max_scores[alignment[0]]['DE'] or
+                alignment[4] / 0.9995 > max_scores[alignment[0]]['ID']
             ):
-                species = accession2lineage[row[1].rsplit('_', 1)[0]]
-                if (row[0], species) not in duplicates:
-                    data.append(row + [species])
-                    duplicates.add((row[0], species))
+                if (alignment[0], alignment[-1]) not in duplicates:
+                    alignments.append(alignment)
+                    duplicates.add((alignment[0], alignment[-1]))
 
-        ## save pairwise gap-uncompressed/gap-compressed identity for ANI calculation
-        self.identities = {(row[0], row[-1]): (row[3], row[4]) for row in data}
+        ## save pairwise gap-compressed/gap-uncompressed identity for ANI calculation
+        self.alignments = alignments
+        self.identities = {(alignment[0], alignment[-1]): (alignment[3], alignment[4]) for alignment in self.alignments}
 
+    def postprocess(self, max_iteration=1000, epsilon=1e-10):
+        '''
+        Post-processing and label reassignment using EM.
+        '''
         ## create a matrix then fill
-        qseqids, lineages = np.unique([row[0] for row in data]), np.unique([row[-1] for row in data])
+        qseqids, lineages = np.unique([alignment[0] for alignment in self.alignments]), np.unique([alignment[-1] for alignment in self.alignments])
         qseqid2index = {qseqid: index for index, qseqid in enumerate(qseqids)}
         lineage2index = {lineage: index for index, lineage in enumerate(lineages)}
 
-        rows = [qseqid2index[row[0]] for row in data]
-        cols = [lineage2index[row[-1]] for row in data]
+        rows = [qseqid2index[alignment[0]] for alignment in self.alignments]
+        cols = [lineage2index[alignment[-1]] for alignment in self.alignments]
         matrix = csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(len(qseqids), len(lineages)), dtype=int)
 
         ## run EM using the count matrix as input
@@ -287,7 +293,7 @@ class GenomeProfiler:
         '''
         if db_kraken is not None:
             logger.info('Filtering reads ...')
-            if not debug: self.run_kraken(db_krake=db_kraken)
+            if not debug: self.run_kraken(db_kraken=db_kraken)
             self.parse_kraken()
             logger.info(f'... removed {len(self.nset)} putatively non-prokaryotic reads.')
 
