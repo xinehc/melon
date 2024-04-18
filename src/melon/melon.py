@@ -18,6 +18,7 @@ class GenomeProfiler:
         self.db = db
         self.output = output
         self.threads = threads
+        self.outfile = get_filename(self.file, self.output)
 
         self.aset = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
         self.bset = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
@@ -41,8 +42,8 @@ class GenomeProfiler:
         subprocess.run([
             'kraken2',
             '--db', db_kraken,
-            '--report', get_filename(self.file, self.output, '.kraken.report.tmp'),
-            '--output', get_filename(self.file, self.output, '.kraken.output.tmp'),
+            '--report', f'{self.outfile}.kraken.report.tmp',
+            '--output', f'{self.outfile}.kraken.output.tmp',
             '--threads', str(self.threads),
             self.file,
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -55,7 +56,7 @@ class GenomeProfiler:
         '''
         qseqids, taxids = set(), set()
         record = False
-        with open(get_filename(self.file, self.output, '.kraken.report.tmp')) as f:
+        with open(f'{self.outfile}.kraken.report.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 if ls[3] in {'D', 'R1'}:
@@ -64,7 +65,7 @@ class GenomeProfiler:
                 if record:
                     taxids.add(ls[4])
 
-        with open(get_filename(self.file, self.output, '.kraken.output.tmp')) as f:
+        with open(f'{self.outfile}.kraken.output.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 if ls[2] in taxids:
@@ -81,7 +82,7 @@ class GenomeProfiler:
             'diamond', 'blastx',
             '--db', os.path.join(self.db, 'prot.dmnd'),
             '--query', self.file,
-            '--out', get_filename(self.file, self.output, '.diamond.tmp'),
+            '--out', f'{self.outfile}.diamond.tmp',
             '--outfmt', '6', *outfmt,
             '--evalue', str(evalue), '--subject-cover', str(subject_cover), '--id', str(identity),
             '--range-culling', '-F', '15', '--range-cover', '25',
@@ -95,7 +96,7 @@ class GenomeProfiler:
         '''
         qcoords = defaultdict(set)
 
-        with open(get_filename(self.file, self.output, '.diamond.tmp')) as f:
+        with open(f'{self.outfile}.diamond.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 qseqid, sseqid = ls[0], ls[1]
@@ -117,13 +118,13 @@ class GenomeProfiler:
                         ):
                             ## append qseqid and coordinates for back-tracing
                             self.hits.append([qseqid, kingdom, family, qstart, qend])
-                            self.copies[sseqid.split('-')[-2]] += 0.125
+                            self.copies[kingdom] += 0.125
 
     def run_minimap(self, secondary_num=2147483647, secondary_ratio=0.9):
         '''
         Run minimap2 to get taxonomic profiles.
         '''
-        with open(get_filename(self.file, self.output, '.sequence.tmp'), 'w') as w:
+        with open(f'{self.outfile}.sequence.tmp', 'w') as w:
             w.write(extract_sequences(self.file, {hit[0] for hit in self.hits}))
 
         ## consider each kingdom + family separately
@@ -131,13 +132,13 @@ class GenomeProfiler:
         for hit in self.hits:
             qseqids[hit[1] + '.' + hit[2].replace('/', '_')].add(hit[0])
 
-        with open(get_filename(self.file, self.output, '.minimap.tmp'), 'w') as w:
+        with open(f'{self.outfile}.minimap.tmp', 'w') as w:
             with logging_redirect_tqdm():
                 queue = tqdm(qseqids.items(), leave=False)
                 for family, qseqid in queue:
                     queue.set_description(f'==> Processing <{family}>')
 
-                    sequences = extract_sequences(get_filename(self.file, self.output, '.sequence.tmp'), qseqid)
+                    sequences = extract_sequences(f'{self.outfile}.sequence.tmp', qseqid)
                     subprocess.run([
                         'minimap2',
                         '-cx', 'map-ont',
@@ -238,9 +239,9 @@ class GenomeProfiler:
 
         ## return assignments
         assignments = []
-        for row in p_reads.tocsr():
-            row = row.toarray().squeeze()
-            assignments.append(np.where(row == row.max())[0].tolist())
+        for p_read in p_reads.tocsr():
+            p_read = p_read.toarray().squeeze()
+            assignments.append(np.where(p_read == p_read.max())[0].tolist())
 
         ties = defaultdict(set)
         for qseqid, lineage in enumerate(assignments):
@@ -252,16 +253,16 @@ class GenomeProfiler:
         ## resolve ties for equal probability cases using AS, MS and ID
         if ties:
             qset = set.union(*(set(qseqid) for qseqid in ties.values()))
-            data = [row for row in data if row[0] in qset]
+            alignments = [alignment for alignment in self.alignments if alignment[0] in qset]
 
             for lineages, qseqids in ties.items():
-                target = [row for row in data if row[0] in qseqids and row[-1] in lineages]
+                targets = [alignment for alignment in alignments if alignment[0] in qseqids and alignment[-1] in lineages]
 
                 scores = defaultdict(lambda: defaultdict(list))
-                for row in target:
-                    scores[row[-1]]['AS'].append(row[2])
-                    scores[row[-1]]['DE'].append(row[3])
-                    scores[row[-1]]['ID'].append(row[4])
+                for target in targets:
+                    scores[target[-1]]['AS'].append(target[2])
+                    scores[target[-1]]['DE'].append(target[3])
+                    scores[target[-1]]['ID'].append(target[4])
 
                 ## if all the same, choose the one with known species name
                 target = sorted([
@@ -277,7 +278,7 @@ class GenomeProfiler:
                 for qseqid in qseqids:
                     self.assignments[qseqid] = target
 
-    def run(self, db_kraken=None, skip_profile=False, skip_clean=False,
+    def run(self, debug=False, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
             secondary_num=2147483647, secondary_ratio=0.9,
             max_iteration=1000, epsilon=1e-10):
@@ -286,23 +287,22 @@ class GenomeProfiler:
         '''
         if db_kraken is not None:
             logger.info('Filtering reads ...')
-            self.run_kraken(db_kraken)
+            if not debug: self.run_kraken(db_krake=db_kraken)
             self.parse_kraken()
-            logger.info('... removed {} putatively non-prokaryotic reads.'.format(len(self.nset)))
+            logger.info(f'... removed {len(self.nset)} putatively non-prokaryotic reads.')
 
         logger.info('Estimating genome copies ...')
-        self.run_diamond(max_target_seqs, evalue, identity, subject_cover)
+        if not debug: self.run_diamond(max_target_seqs=max_target_seqs, evalue=evalue, identity=identity, subject_cover=subject_cover)
         self.parse_diamond()
-        logger.info('... found {} copies of genomes (bacteria: {}; archaea: {}).'.format(
-            sum(self.copies.values()), self.copies['bacteria'], self.copies['archaea']))
+        logger.info(f"... found {sum(self.copies.values())} copies of genomes (bacteria: {self.copies['bacteria']}; archaea: {self.copies['archaea']}).")
 
         if not skip_profile:
             logger.info('Assigning taxonomy ...')
-            self.run_minimap(secondary_num, secondary_ratio)
+            if not debug: self.run_minimap(secondary_num=secondary_num, secondary_ratio=secondary_ratio)
 
             logger.info('Reassigning taxonomy ...')
             self.parse_minimap()
-            self.postprocess(max_iteration, epsilon)
+            self.postprocess(max_iteration=max_iteration, epsilon=epsilon)
 
             ## fill missing ones according to hits
             replacements = {
@@ -336,7 +336,7 @@ class GenomeProfiler:
             ], key=lambda row: (row[8], row[10], row[7]))
 
             richness = {'bacteria': 0, 'archaea': 0}
-            with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
+            with open(f'{self.outfile}.tsv', 'w') as w:
                 w.write('\t'.join(self.ranks + ['copy', 'abundance', 'identity']) + '\n')
 
                 for row in self.profile:
@@ -344,8 +344,7 @@ class GenomeProfiler:
                         richness[row[0].split('|')[-1].lower()] += 1
                     w.write('\t'.join(row[:7] + [f'{row[7]:.3f}', f'{row[8]:e}', f'{row[9]:.4f}/{row[10]:.4f}']) + '\n')
 
-            logger.info('... found {} unique species (bacteria: {}; archaea: {}).'.format(
-                sum(richness.values()), richness['bacteria'], richness['archaea']))
+            logger.info(f"... found {sum(richness.values())} unique species (bacteria: {richness['bacteria']}; archaea: {richness['archaea']}).")
 
         else:
             self.profile = sorted([
@@ -353,7 +352,7 @@ class GenomeProfiler:
                 ['Archaea', self.copies['archaea'], self.copies['archaea'] / sum(self.copies.values())]
             ], key=lambda row: (row[-2], row[-3]))
 
-            with open(get_filename(self.file, self.output, '.tsv'), 'w') as w:
+            with open(f'{self.outfile}.tsv', 'w') as w:
                 w.write('\t'.join(['superkingdom', 'copy', 'abundance']) + '\n')
 
                 for row in self.profile:
@@ -369,10 +368,10 @@ class GenomeProfiler:
             reads.update({hit[0]: {
                 'remark': 'marker-gene-containing', 'lineage': hit[1].capitalize()} for hit in self.hits})
 
-        with open(get_filename(self.file, self.output, '.json'), 'w') as w:
+        with open(f'{self.outfile}.json', 'w') as w:
             json.dump(dict(sorted(reads.items())), w, indent=4)
 
         ## clean up
         if not skip_clean:
-            for file in glob.glob(get_filename(self.file, self.output, '.*.tmp')):
+            for file in glob.glob(f'{self.outfile}.*.tmp'):
                 os.remove(file)

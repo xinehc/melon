@@ -12,8 +12,8 @@ def cli(argv=sys.argv):
     '''
     Entry point for command line interface.
     '''
-    parser = ArgumentParser(description='Melon: \
-        metagenomic long-read-based taxonomic identification and quantification', add_help=False)
+    parser = ArgumentParser(
+        description='Melon: metagenomic long-read-based taxonomic identification and quantification', add_help=False)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     additional = parser.add_argument_group('additional arguments')
@@ -44,7 +44,7 @@ def cli(argv=sys.argv):
         metavar='INT',
         type=int,
         default=os.cpu_count(),
-        help='Number of threads. [{}]'.format(os.cpu_count()))
+        help=f'Number of threads. [{os.cpu_count()}]')
 
     optional.add_argument(
         '-k',
@@ -122,11 +122,11 @@ def cli(argv=sys.argv):
     parser.add_argument('-h', '--help', action='help', help=SUPPRESS)
 
     if len(argv) == 1:
-        print("\
+        print(f"\
              __         \n\
   __ _  ___ / /__  ___  \n\
  /  ' \/ -_) / _ \/ _ \ \n\
-/_/_/_/\__/_/\___/_//_/ ver. {}\n".format(__version__))
+/_/_/_/\__/_/\___/_//_/ ver. {__version__}\n")
 
     opt = parser.parse_args(argv[1:])
     run(opt)
@@ -140,17 +140,17 @@ def run(opt):
     if not os.path.isdir(opt.output):
         os.makedirs(opt.output, exist_ok=True)
     else:
-        logger.warning('Folder <{}> exists. Files will be overwritten.'.format(opt.output))
+        logger.warning(f'Folder <{opt.output}> exists. Files will be overwritten.')
 
     ## check for input files
     for file in opt.FILE:
         if not os.path.isfile(file):
-            logger.critical('File <{}> does not exist.'.format(file))
+            logger.critical(f'File <{file}> does not exist.')
             sys.exit(2)
 
     ## check for database
     if not os.path.isdir(opt.db):
-        logger.critical('Database folder <{}> does not exist.'.format(opt.db))
+        logger.critical(f'Database folder <{opt.db}> does not exist.')
         sys.exit(2)
     else:
         files = [os.path.basename(file) for file in glob.glob(os.path.join(opt.db, '*'))]
@@ -158,31 +158,30 @@ def run(opt):
             'metadata.tsv' not in files or 'prot.dmnd' not in files or
             len([file for file in files if 'nucl' in file and '.mmi' in file]) != 16
         ):
-            logger.critical('Database <{}> is not complete or not indexed.'.format(opt.db))
+            logger.critical(f'Database <{opt.db}> is not complete or not indexed.')
             sys.exit(2)
 
     ## check for kraken2 database
     if opt.db_kraken is not None:
         if not os.path.isdir(opt.db_kraken):
-            logger.critical('Kraken2 database folder <{}> does not exist.'.format(opt.db_kraken))
+            logger.critical(f'Kraken2 database folder <{opt.db_kraken}> does not exist.')
             sys.exit(2)
         else:
             files = [os.path.basename(file) for file in glob.glob(os.path.join(opt.db_kraken, '*'))]
             if 'ktaxonomy.tsv' not in files or len([file for file in files if 'database' in file]) != 7:
-                logger.critical('Kraken2 database <{}> is not complete.'.format(opt.db_kraken))
+                logger.critical(f'Kraken2 database <{opt.db_kraken}> is not complete.')
                 sys.exit(2)
 
     ## check for logical cores
     if opt.threads > os.cpu_count():
-        logger.warning(
-            'Threads <{}> exceeds available logical cores, will use <{}> instead.'.format(opt.threads, os.cpu_count()))
+        logger.warning(f'Threads <{opt.threads}> exceeds available logical cores, will use <{os.cpu_count()}> instead.')
         opt.threads = os.cpu_count()
     os.environ['OMP_NUM_THREADS'] = str(opt.threads)
 
     ## run
     for index, file in enumerate(opt.FILE):
         if len(opt.FILE) > 1:
-            logger.info('Processing file <{}> ({}/{}) ...'.format(file, index + 1, len(opt.FILE)))
+            logger.info(f'Processing file <{file}> ({index + 1}/{len(opt.FILE)}) ...')
 
         GenomeProfiler(file, opt.db, opt.output, opt.threads).run(
             db_kraken=opt.db_kraken, skip_profile=opt.skip_profile, skip_clean=opt.skip_clean,
