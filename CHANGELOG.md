@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.5] - 2024-04-26
+### Fixed
+- Fix a bug causing `tqdm` being disabled ([3bbd087](https://github.com/xinehc/melon/commit/3bbd087b8867e3167973a746af14f1fd797f9746)).
+
 ## [0.1.4] - 2024-04-26
 ### Changed
 - Use `tqdm` for logging.
