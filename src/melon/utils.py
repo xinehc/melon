@@ -1,21 +1,28 @@
 import os
 import re
+import sys
 import subprocess
-import logging
+import logging    
 
+if sys.stderr.isatty():
+    os.environ['TQDM_DISABLE'] = '1'
+
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 ## setup logger format
 logging.basicConfig(
-    level="INFO",
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S")
+    level='INFO',
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 
-logging.addLevelName(logging.INFO,
-                     f'\033[1m{logging.getLevelName(logging.INFO)}\033[1;0m')
-logging.addLevelName(logging.WARNING,
-                     f'\033[1m\x1b[33;20m{logging.getLevelName(logging.WARNING)}\033[1;0m')
-logging.addLevelName(logging.CRITICAL,
-                     f'\033[1m\x1b[31;20m{logging.getLevelName(logging.CRITICAL)}\033[1;0m')
+if sys.stderr.isatty():
+    logging.addLevelName(logging.INFO,
+                         f'\033[1m{logging.getLevelName(logging.INFO)}\033[1;0m')
+    logging.addLevelName(logging.WARNING,
+                         f'\033[1m\x1b[33;20m{logging.getLevelName(logging.WARNING)}\033[1;0m')
+    logging.addLevelName(logging.CRITICAL,
+                         f'\033[1m\x1b[31;20m{logging.getLevelName(logging.CRITICAL)}\033[1;0m')
 
 logger = logging.getLogger(__name__)
 

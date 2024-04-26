@@ -2,8 +2,6 @@ import glob
 import json
 import numpy as np
 
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 from collections import defaultdict
 from scipy.sparse import csr_matrix
 from .utils import *

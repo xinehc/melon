@@ -123,10 +123,10 @@ def cli(argv=sys.argv):
 
     if len(argv) == 1:
         print(f"\
-             __         \n\
-  __ _  ___ / /__  ___  \n\
- /  ' \/ -_) / _ \/ _ \ \n\
-/_/_/_/\__/_/\___/_//_/ ver. {__version__}\n")
+             __            \n\
+  __ _  ___ / /__  ___     \n\
+ /  ' \\/ -_) / _ \\/ _ \\ \n\
+/_/_/_/\\__/_/\\___/_//_/ ver. {__version__}\n")
 
     opt = parser.parse_args(argv[1:])
     run(opt)
