@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] - 2024-04-26
+### Changed
+- Use `tqdm` for logging.
+- Reduce peak memory usage by parsing PAF files on the fly.
+
 ## [0.1.3] - 2024-03-29
 ### Changed
 - Change alignment filtering criteria: make `AS` cutoff more stringent, drop `MS`. See [7cc6dbd](https://github.com/xinehc/melon/commit/7cc6dbd866027cf5c1adaa5c69ed7919d8630607) for details.

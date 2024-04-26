@@ -4,13 +4,13 @@ import sys
 import subprocess
 import logging    
 
+## setup logging format
 if sys.stderr.isatty():
     os.environ['TQDM_DISABLE'] = '1'
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-## setup logger format
 logging.basicConfig(
     level='INFO',
     format='[%(asctime)s] %(levelname)s: %(message)s',
