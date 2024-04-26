@@ -5,7 +5,7 @@ import subprocess
 import logging    
 
 ## setup logging format
-if sys.stderr.isatty():
+if not sys.stderr.isatty():
     os.environ['TQDM_DISABLE'] = '1'
 
 from tqdm import tqdm
