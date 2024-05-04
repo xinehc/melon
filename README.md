@@ -10,13 +10,13 @@ conda activate melon
 ```
 
 ### Database setup
-Download either the NCBI or the GTDB database:
+Download either the [NCBI](https://zenodo.org/records/11100615) or the [GTDB](https://zenodo.org/records/11076519) database:
 ```bash
 ## GTDB
-# wget -q --show-progress https://figshare.com/ndownloader/files/42694702/database.tar.gz
+# wget -qN --show-progress https://zenodo.org/records/11076519/files/database.tar.gz
 
 ## NCBI
-wget -q --show-progress https://figshare.com/ndownloader/files/42694969/database.tar.gz
+wget -qN --show-progress https://zenodo.org/records/11100615/files/database.tar.gz
 tar -zxvf database.tar.gz
 ```
 
@@ -27,9 +27,10 @@ cpu_count=$(python -c 'import os; print(os.cpu_count())')
 
 diamond makedb --in database/prot.fa --db database/prot --quiet
 ls database/nucl.*.fa | sort | xargs -P $cpu_count -I {} bash -c '
-    filename=${1%.fa*}; \
-    filename=${filename##*/}; \
-    minimap2 -x map-ont -d database/$filename.mmi ${1} 2> /dev/null' - {}
+    filename=${1%.fa*};
+    filename=${filename##*/};
+    minimap2 -x map-ont -d database/$filename.mmi ${1} 2> /dev/null;
+    echo "Indexed <database/$filename.fa>.";' - {}
 
 ## remove unnecessary files to save space
 rm -rf database/*.fa
@@ -49,7 +50,7 @@ melon example.fa.gz -d database -o .
 You should see:
 ```
 INFO: Estimating genome copies ...
-INFO: ... found 27.5 copies of genomes (bacteria: 27.5; archaea: 0).
+INFO: ... found 27.375 copies of genomes (bacteria: 27.375; archaea: 0).
 INFO: Assigning taxonomy ...
 INFO: Reassigning taxonomy ...
 INFO: ... found 8 unique species (bacteria: 8; archaea: 0).
@@ -59,14 +60,14 @@ INFO: Done.
 The output file `*.tsv` contains the estimated genome copies for individual species, their corresponding relative abundances and gap-compressed/gap-uncompressed ANI (average nucleotide identity between marker-gene-containing reads and reference genome clusters) values:
 ```
 ...    species                               copy     abundance       identity
-...    287|Pseudomonas aeruginosa            2.125    7.727273e-02    0.9570/0.9473
-...    96241|Bacillus spizizenii             2.875    1.045455e-01    0.9617/0.9531
-...    1351|Enterococcus faecalis            3.000    1.090909e-01    0.9616/0.9534
-...    28901|Salmonella enterica             3.125    1.136364e-01    0.9525/0.9434
-...    562|Escherichia coli                  3.500    1.272727e-01    0.9589/0.9506
-...    1639|Listeria monocytogenes           3.750    1.363636e-01    0.9627/0.9546
-...    1280|Staphylococcus aureus            3.875    1.409091e-01    0.9599/0.9518
-...    1613|Limosilactobacillus fermentum    5.250    1.909091e-01    0.9645/0.9562
+...    287|Pseudomonas aeruginosa            2.125    7.762557e-02    0.9570/0.9473
+...    96241|Bacillus spizizenii             2.875    1.050228e-01    0.9617/0.9531
+...    1351|Enterococcus faecalis            3.000    1.095890e-01    0.9616/0.9534
+...    28901|Salmonella enterica             3.125    1.141553e-01    0.9525/0.9433
+...    562|Escherichia coli                  3.500    1.278539e-01    0.9588/0.9504
+...    1639|Listeria monocytogenes           3.750    1.369863e-01    0.9627/0.9546
+...    1280|Staphylococcus aureus            3.875    1.415525e-01    0.9598/0.9517
+...    1613|Limosilactobacillus fermentum    5.125    1.872146e-01    0.9654/0.9574
 ```
 
 The output file `*.json` contains the lineage and remark of each processed reads.
