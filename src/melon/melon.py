@@ -162,6 +162,7 @@ class GenomeProfiler:
             qcoords[hit[0]].add(tuple(hit[-2:]))
         scores = defaultdict(lambda: defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0}))
 
+        alignments = []
         with open(f'{self.outfile}.minimap.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
@@ -178,35 +179,33 @@ class GenomeProfiler:
                         scores[qseqid][lineage]['AS'] = max(AS_MAX, AS)
                         scores[qseqid][lineage]['DE'] = max(DE_MAX, DE)
                         scores[qseqid][lineage]['ID'] = max(ID_MAX, ID)
-                        self.alignments.append([qseqid, sseqid, AS, DE, ID, lineage])
+                        alignments.append([qseqid, sseqid, AS, DE, ID, lineage])
 
         ## filter out low-score alignments
-        alignments = []
         duplicates = set()
         max_scores = defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0})
 
-        for alignment in self.alignments:
+        for alignment in alignments:
             max_scores[alignment[0]]['AS'] = max(max_scores[alignment[0]]['AS'], alignment[2])
             max_scores[alignment[0]]['DE'] = max(max_scores[alignment[0]]['DE'], alignment[3])
             max_scores[alignment[0]]['ID'] = max(max_scores[alignment[0]]['ID'], alignment[4])
 
-        for alignment in sorted(self.alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
+        for alignment in sorted(alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
             if (
                 max(alignment[2] / 0.9975, alignment[2] + 25) > max_scores[alignment[0]]['AS'] or
                 alignment[3] / 0.9995 > max_scores[alignment[0]]['DE'] or
                 alignment[4] / 0.9995 > max_scores[alignment[0]]['ID']
             ):
                 if (alignment[0], alignment[-1]) not in duplicates:
-                    alignments.append(alignment)
+                    self.alignments.append(alignment)
                     duplicates.add((alignment[0], alignment[-1]))
 
         ## save pairwise gap-compressed/gap-uncompressed identity for ANI calculation
-        self.alignments = alignments
         self.identities = {(alignment[0], alignment[-1]): (alignment[3], alignment[4]) for alignment in self.alignments}
 
-    def postprocess(self, max_iteration=1000, epsilon=1e-10):
+    def run_em(self, max_iteration=1000, epsilon=1e-10):
         '''
-        Post-processing and label reassignment using EM.
+        Label reassignment with EM.
         '''
         ## create a matrix then fill
         qseqids, lineages = np.unique([alignment[0] for alignment in self.alignments]), np.unique([alignment[-1] for alignment in self.alignments])
@@ -306,7 +305,7 @@ class GenomeProfiler:
 
             logger.info('Reassigning taxonomy ...')
             self.parse_minimap()
-            self.postprocess(max_iteration=max_iteration, epsilon=epsilon)
+            self.run_em(max_iteration=max_iteration, epsilon=epsilon)
 
             ## fill missing ones according to hits
             replacements = {
@@ -337,7 +336,7 @@ class GenomeProfiler:
             # generate a profile output
             self.profile = sorted([
                 [*lineage.split(';'), copy, copy / total_copies, *np.mean(lineage2identity.get(lineage), axis=0)] for lineage, copy in copies.items()
-            ], key=lambda row: (row[8], row[10], row[7]))
+            ], key=lambda row: (row[7], row[9], row[6]))
 
             richness = {'bacteria': 0, 'archaea': 0}
             with open(f'{self.outfile}.tsv', 'w') as w:
@@ -354,7 +353,7 @@ class GenomeProfiler:
             self.profile = sorted([
                 ['Bacteria', self.copies['bacteria'], self.copies['bacteria'] / sum(self.copies.values())],
                 ['Archaea', self.copies['archaea'], self.copies['archaea'] / sum(self.copies.values())]
-            ], key=lambda row: (row[-2], row[-3]))
+            ], key=lambda row: (row[1], row[0]))
 
             with open(f'{self.outfile}.tsv', 'w') as w:
                 w.write('\t'.join(['superkingdom', 'copy', 'abundance']) + '\n')
