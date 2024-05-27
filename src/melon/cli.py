@@ -109,7 +109,7 @@ def cli(argv=sys.argv):
         metavar='INT',
         type=int,
         default=1000,
-        help='Terminal condition - max. iteration. [1000]')
+        help='Terminal condition - max. iterations. [1000]')
 
     additional_em.add_argument(
         '-c',
@@ -187,7 +187,7 @@ def run(opt):
             db_kraken=opt.db_kraken, skip_profile=opt.skip_profile, skip_clean=opt.skip_clean,
             max_target_seqs=opt.m, evalue=opt.e, identity=opt.i, subject_cover=opt.s,
             secondary_num=opt.n, secondary_ratio=opt.p,
-            max_iteration=opt.a, epsilon=opt.c)
+            max_iterations=opt.a, epsilon=opt.c)
 
         if index == len(opt.FILE) - 1:
             logger.info('Done.')

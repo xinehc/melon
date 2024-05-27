@@ -203,7 +203,7 @@ class GenomeProfiler:
         ## save pairwise gap-compressed/gap-uncompressed identity for ANI calculation
         self.identities = {(alignment[0], alignment[-1]): (alignment[3], alignment[4]) for alignment in self.alignments}
 
-    def run_em(self, max_iteration=1000, epsilon=1e-10):
+    def run_em(self, max_iterations=1000, epsilon=1e-10):
         '''
         Label reassignment with EM.
         '''
@@ -224,7 +224,7 @@ class GenomeProfiler:
         p_mappings_hist = p_mappings.copy()
 
         iteration = 0
-        while iteration < max_iteration:
+        while iteration < max_iterations:
             iteration += 1
 
             ## e-step
@@ -284,7 +284,7 @@ class GenomeProfiler:
     def run(self, debug=False, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
             secondary_num=2147483647, secondary_ratio=0.9,
-            max_iteration=1000, epsilon=1e-10):
+            max_iterations=1000, epsilon=1e-10):
         '''
         Run the pipeline.
         '''
@@ -305,7 +305,7 @@ class GenomeProfiler:
 
             logger.info('Reassigning taxonomy ...')
             self.parse_minimap()
-            self.run_em(max_iteration=max_iteration, epsilon=epsilon)
+            self.run_em(max_iterations=max_iterations, epsilon=epsilon)
 
             ## fill missing ones according to hits
             replacements = {
