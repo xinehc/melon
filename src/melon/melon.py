@@ -83,7 +83,7 @@ class GenomeProfiler:
             '--out', f'{self.outfile}.diamond.tmp',
             '--outfmt', '6', *outfmt,
             '--evalue', str(evalue), '--subject-cover', str(subject_cover), '--id', str(identity),
-            '--range-culling', '-F', '15', '--range-cover', '25',
+            '--range-culling', '--frameshift', '15', '--range-cover', '25',
             '--max-hsps', '0', '--max-target-seqs', str(max_target_seqs),
             '--threads', str(self.threads)
         ], check=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
