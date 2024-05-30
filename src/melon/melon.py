@@ -122,8 +122,7 @@ class GenomeProfiler:
         '''
         Run minimap2 to get taxonomic profiles.
         '''
-        with open(f'{self.outfile}.sequence.tmp', 'w') as w:
-            w.write(extract_sequences(self.file, {hit[0] for hit in self.hits}))
+        extract_sequence(self.file, {hit[0] for hit in self.hits}, f'{self.outfile}.sequence.tmp')
 
         ## consider each kingdom + family separately
         qseqids = defaultdict(set)
@@ -136,7 +135,7 @@ class GenomeProfiler:
                 for family, qseqid in queue:
                     queue.set_description(f'==> Processing <{family}>')
 
-                    sequences = extract_sequences(f'{self.outfile}.sequence.tmp', qseqid)
+                    sequences = extract_sequence(f'{self.outfile}.sequence.tmp', qseqid)
                     subprocess.run([
                         'minimap2',
                         '-cx', 'map-ont',
@@ -281,7 +280,7 @@ class GenomeProfiler:
                 for qseqid in qseqids:
                     self.assignments[qseqid] = target
 
-    def run(self, debug=False, db_kraken=None, skip_profile=False, skip_clean=False,
+    def run(self, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
             secondary_num=2147483647, secondary_ratio=0.9,
             max_iterations=1000, epsilon=1e-10):
@@ -290,18 +289,18 @@ class GenomeProfiler:
         '''
         if db_kraken is not None:
             logger.info('Filtering reads ...')
-            if not debug: self.run_kraken(db_kraken=db_kraken)
+            self.run_kraken(db_kraken=db_kraken)
             self.parse_kraken()
             logger.info(f'... removed {len(self.nset)} putatively non-prokaryotic reads.')
 
         logger.info('Estimating genome copies ...')
-        if not debug: self.run_diamond(max_target_seqs=max_target_seqs, evalue=evalue, identity=identity, subject_cover=subject_cover)
+        self.run_diamond(max_target_seqs=max_target_seqs, evalue=evalue, identity=identity, subject_cover=subject_cover)
         self.parse_diamond()
         logger.info(f"... found {sum(self.copies.values())} copies of genomes (bacteria: {self.copies['bacteria']}; archaea: {self.copies['archaea']}).")
 
         if not skip_profile:
             logger.info('Assigning taxonomy ...')
-            if not debug: self.run_minimap(secondary_num=secondary_num, secondary_ratio=secondary_ratio)
+            self.run_minimap(secondary_num=secondary_num, secondary_ratio=secondary_ratio)
 
             logger.info('Reassigning taxonomy ...')
             self.parse_minimap()

@@ -61,9 +61,12 @@ def get_filename(file, output=None, extension=None):
     return filename
 
 
-def extract_sequences(file, ids):
+def extract_sequence(file, ids, output=None):
     '''
     Extract sequences from a source fa/fq file using seqkit.
     '''
-    cmd = ['seqkit', 'grep', '-f', '-', file]
-    return subprocess.run(cmd, check=True, input='\n'.join(ids) + '\n', text=True, capture_output=True).stdout
+    cmd = ['seqkit', 'grep', '-f', '-', file, '--quiet']
+    if output is not None:
+        subprocess.run(cmd + ['-o', output], check=True, input='\n'.join(ids) + '\n', text=True)
+    else:
+        return subprocess.run(cmd, check=True, input='\n'.join(ids) + '\n', text=True, capture_output=True).stdout
