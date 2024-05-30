@@ -1,4 +1,9 @@
 # Changelog
+## [0.1.6] - 2024-05-30
+### Changed
+- Prevent `extract_sequence` from loading all marker-containing reads into memory.
+- Change `-F` to `--frameshift` and `max_iteration` to `max_iterations` for consistency.
+- Switch from figshare to zenodo for better database versioning.
 
 ## [0.1.5] - 2024-04-26
 ### Fixed
