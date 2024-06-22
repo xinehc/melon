@@ -93,7 +93,6 @@ class GenomeProfiler:
         Parse diamond's output and record the hits.
         '''
         qcoords = defaultdict(set)
-
         with open(f'{self.outfile}.diamond.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
@@ -158,43 +157,29 @@ class GenomeProfiler:
 
         qcoords = defaultdict(set)
         for hit in self.hits:
-            qcoords[hit[0]].add(tuple(hit[-2:]))
-        scores = defaultdict(lambda: defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0}))
+            qcoords[hit[0]].add(tuple(hit[3:5]))
 
         alignments = []
+        scores, max_scores = defaultdict(lambda: defaultdict(lambda: -np.inf)), defaultdict(lambda: -np.inf)
         with open(f'{self.outfile}.minimap.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 qstart, qend, qseqid, sseqid = int(ls[2]), int(ls[3]), ls[0], ls[5]
                 lineage = accession2lineage[sseqid.rsplit('_', 1)[0]]
 
-                AS_MAX, AS = scores[qseqid][lineage].get('AS', 0), int(ls[14].split('AS:i:')[-1])
-                DE_MAX, DE = scores[qseqid][lineage].get('DE', 0), 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1])
-                ID_MAX, ID = scores[qseqid][lineage].get('ID', 0), int(ls[9]) / int(ls[10])
-
                 ## filter out non-overlapping alignments
-                if AS > AS_MAX or DE > DE_MAX or ID > ID_MAX:
-                    if any(compute_overlap((qstart, qend, *qcoord))>0 for qcoord in qcoords[qseqid]):
-                        scores[qseqid][lineage]['AS'] = max(AS_MAX, AS)
-                        scores[qseqid][lineage]['DE'] = max(DE_MAX, DE)
-                        scores[qseqid][lineage]['ID'] = max(ID_MAX, ID)
+                if (AS := int(ls[14].split('AS:i:')[-1])) > (AS_MAX := scores[qseqid].get(lineage, -np.inf)):
+                    if any(compute_overlap((qstart, qend, *qcoord)) > 0 for qcoord in qcoords[qseqid]):
+                        scores[qseqid][lineage] = AS
+                        max_scores[qseqid] = max(max_scores.get(qseqid, -np.inf), AS)
+
+                        DE, ID = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1]), int(ls[9]) / int(ls[10])
                         alignments.append([qseqid, sseqid, AS, DE, ID, lineage])
 
         ## filter out low-score alignments
         duplicates = set()
-        max_scores = defaultdict(lambda: {'AS': 0, 'DE': 0, 'ID': 0})
-
-        for alignment in alignments:
-            max_scores[alignment[0]]['AS'] = max(max_scores[alignment[0]]['AS'], alignment[2])
-            max_scores[alignment[0]]['DE'] = max(max_scores[alignment[0]]['DE'], alignment[3])
-            max_scores[alignment[0]]['ID'] = max(max_scores[alignment[0]]['ID'], alignment[4])
-
         for alignment in sorted(alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
-            if (
-                max(alignment[2] / 0.9975, alignment[2] + 25) > max_scores[alignment[0]]['AS'] or
-                alignment[3] / 0.9995 > max_scores[alignment[0]]['DE'] or
-                alignment[4] / 0.9995 > max_scores[alignment[0]]['ID']
-            ):
+            if max(alignment[2] / 0.995, alignment[2] + 50) > max_scores.get(alignment[0]):
                 if (alignment[0], alignment[-1]) not in duplicates:
                     self.alignments.append(alignment)
                     duplicates.add((alignment[0], alignment[-1]))
