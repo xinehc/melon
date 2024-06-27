@@ -2,7 +2,7 @@ import os
 import re
 import sys
 import subprocess
-import logging    
+import logging
 
 ## setup logging format
 if not sys.stderr.isatty():

@@ -1,18 +1,28 @@
 # Changelog
+## [0.2.0] - 2024-06-28
+### Added
+- [***breaking***] Add decoy protein sequences (RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38) which effectively trap non-prokaryotic reads and prevent them from inflating total prokaryotic genome copy estimates if the pre-filtering module (default with `Kraken2`) is not enabled. Pre-filtering is no longer necessary even if samples are contaminated with human DNA or other common eukaryotes/viruses, unless the mean genome size of prokaryotes needs to be estimated. See [8918168](https://github.com/xinehc/melon-supplementary/commit/891816897bb3c82dcfff7ff44b45907593ba0eac) for more details. This function requires a database released on or after 2024-06-28.
+### Changed
+- Simplify filtering criteria for alignments.
+
+
 ## [0.1.6] - 2024-05-30
 ### Changed
 - Prevent `extract_sequence` from loading all marker-containing reads into memory.
 - Change `-F` to `--frameshift` and `max_iteration` to `max_iterations` for consistency.
 - Switch from figshare to zenodo for better database versioning.
 
+
 ## [0.1.5] - 2024-04-26
 ### Fixed
 - Fix a bug causing `tqdm` being disabled ([3bbd087](https://github.com/xinehc/melon/commit/3bbd087b8867e3167973a746af14f1fd797f9746)).
+
 
 ## [0.1.4] - 2024-04-26
 ### Changed
 - Use `tqdm` for logging.
 - Reduce peak memory usage by parsing PAF files on the fly.
+
 
 ## [0.1.3] - 2024-03-29
 ### Changed
@@ -25,9 +35,11 @@
 - Output both gap-compressed and gap-uncompressed (BLAST-like) identity.
 - Refine output format.
 
+
 ## [0.1.2] - 2023-12-20
 ### Added
 - Add gap-compressed ANI to output.
+
 
 ## [0.1.1] - 2023-11-29
 ### Added
@@ -39,6 +51,7 @@
 
 ### Fixed
 - Fix a bug causing chimeric reads not being aggregated.
+
 
 ## [0.1.0] - 2023-10-08
 ### Added
@@ -53,6 +66,7 @@
 
 ### Fixed
 - Prevent numpy from using all logical cores.
+
 
 ## [0.0.1] - 2023-09-19
 ### Added

@@ -10,13 +10,16 @@ conda activate melon
 ```
 
 ### Database setup
-Download either the [NCBI](https://zenodo.org/records/11100615) or the [GTDB](https://zenodo.org/records/11076519) database:
-```bash
-## GTDB
-# wget -qN --show-progress https://zenodo.org/records/11076519/files/database.tar.gz
+> [!NOTE]
+> We suggest using the GTDB database for complex metagenomes, as it features less ambiguous taxonomic labels and is more comprehensive.
 
+Download either the [NCBI](https://zenodo.org/records/12571302) or the [GTDB](https://zenodo.org/records/12571554) database:
+```bash
 ## NCBI
-wget -qN --show-progress https://zenodo.org/records/11100615/files/database.tar.gz
+wget -qN --show-progress https://zenodo.org/records/12571302/files/database.tar.gz
+
+## GTDB
+# wget -qN --show-progress https://zenodo.org/records/12571554/files/database.tar.gz
 tar -zxvf database.tar.gz
 ```
 
@@ -37,13 +40,13 @@ rm -rf database/*.fa
 ```
 
 ### Run Melon
-> [!NOTE]  
-> Melon takes **quality-controlled** and **decontaminated** long reads as input. We suggest to remove low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` (minimal quality score 10; minimal read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or known eukaryotes/viruses, please consider removing them via proper mapping. If the origin of contamination is unknown, or if you want to estimate the mean genome size of prokaryotes, you may consider enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
+> [!NOTE]
+> Melon takes **quality-controlled** long reads as input. We suggest removing low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` (min. quality score 10; min. read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or other eukaryotes/viruses and you want to estimate the **mean genome size** of prokaryotes, please consider removing them via proper mapping, or enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
 
-We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`), prokaryotic reads (fungal and other reads removed with `minimap2`) randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
+We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`) prokaryotic reads (fungal and other reads removed with `minimap2`), randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
 
 ```bash
-wget -q --show-progress https://figshare.com/ndownloader/files/47279572/example.fa.gz
+wget -qN --show-progress https://zenodo.org/records/12571849/files/example.fa.gz
 melon example.fa.gz -d database -o .
 ```
 
@@ -70,7 +73,7 @@ The output file `*.tsv` contains the estimated genome copies for individual spec
 ...    1613|Limosilactobacillus fermentum    5.125    1.872146e-01    0.9654/0.9574
 ```
 
-The output file `*.json` contains the lineage and remark of each processed reads.
+The output file `*.json` contains the lineage and remark of each processed read.
 ```
 {
     "002617ff-697a-4cd5-8a97-1e136a792228": {
@@ -86,7 +89,7 @@ The output file `*.json` contains the lineage and remark of each processed reads
 ```
 
 ### Run Melon with pre-filtering of non-prokaryotic reads
-To enable the pre-filtering module, you need to download a database of Kraken that includes at least human and fungi (PlusPF, PlusPFP, or their capped versions). Using the PlusPF-8 (ver. 2023-06-05, capped at 8 GB) as an example:
+To enable the pre-filtering module, you need to download a database of Kraken2 that includes at least human and fungi (PlusPF, PlusPFP, or their capped versions). Using the PlusPF-8 (ver. 2023-06-05, capped at 8 GB) as an example:
 
 ```bash
 ## https://benlangmead.github.io/aws-indexes/k2

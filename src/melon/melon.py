@@ -160,7 +160,7 @@ class GenomeProfiler:
             qcoords[hit[0]].add(tuple(hit[3:5]))
 
         alignments = []
-        scores, max_scores = defaultdict(lambda: defaultdict(lambda: -np.inf)), defaultdict(lambda: -np.inf)
+        scores, max_scores = defaultdict(dict), dict()
         with open(f'{self.outfile}.minimap.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
@@ -168,7 +168,7 @@ class GenomeProfiler:
                 lineage = accession2lineage[sseqid.rsplit('_', 1)[0]]
 
                 ## filter out non-overlapping alignments
-                if (AS := int(ls[14].split('AS:i:')[-1])) > (AS_MAX := scores[qseqid].get(lineage, -np.inf)):
+                if (AS := int(ls[14].split('AS:i:')[-1])) > scores[qseqid].get(lineage, -np.inf):
                     if any(compute_overlap((qstart, qend, *qcoord)) > 0 for qcoord in qcoords[qseqid]):
                         scores[qseqid][lineage] = AS
                         max_scores[qseqid] = max(max_scores.get(qseqid, -np.inf), AS)
