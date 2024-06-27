@@ -17,10 +17,11 @@ Download either the [NCBI](https://zenodo.org/records/12571302) or the [GTDB](ht
 ```bash
 ## NCBI
 wget -qN --show-progress https://zenodo.org/records/12571302/files/database.tar.gz
+tar -zxvf database.tar.gz
 
 ## GTDB
 # wget -qN --show-progress https://zenodo.org/records/12571554/files/database.tar.gz
-tar -zxvf database.tar.gz
+# tar -zxvf database.tar.gz
 ```
 
 Index the files: 
