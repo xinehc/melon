@@ -43,7 +43,7 @@ rm -rf database/*.fa
 We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`), prokaryotic reads (fungal and other reads removed with `minimap2`) randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
 
 ```bash
-wget -q --show-progress https://figshare.com/ndownloader/files/42847672/example.fa.gz
+wget -q --show-progress https://figshare.com/ndownloader/files/47279572/example.fa.gz
 melon example.fa.gz -d database -o .
 ```
 
@@ -120,15 +120,16 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
    </thead>
    <tbody>
       <tr>
-         <td rowspan="7">influent
-         <div>
-  <ul>
-    <li>read: 1,091,772</li>
-    <li>bp: 7,815,976,467</li>
-    <li>n50: 9,500</li>
-    <li>mean quality: 18.3</li>
-  </ul>
-</div></td>
+         <td rowspan="6">influent
+            <div>
+               <ul>
+                  <li>read: 1,091,772</li>
+                  <li>bp: 7,815,976,467</li>
+                  <li>n50: 9,500</li>
+                  <li>mean quality: 18.3</li>
+               </ul>
+            </div>
+         </td>
          <td>genome copy</td>
          <td>1,809</td>
          <td>1,801</td>
@@ -157,13 +158,6 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
          <td>4.292</td>
       </tr>
       <tr>
-         <td>ARG abudnance</td>
-         <td>0.551</td>
-         <td>0.553</td>
-         <td>0.553</td>
-         <td>0.554</td>
-      </tr>
-      <tr>
          <td>real time (sec)</td>
          <td>2,056</td>
          <td>2,271</td>
@@ -178,14 +172,14 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
          <td>-</td>
       </tr>
       <tr>
-         <td rowspan="7">effluent
-           <ul>
-    <li>read: 1,118,502</li>
-    <li>bp: 5,157,996,045</li>
-    <li>n50: 6,577</li>
-    <li>mean quality: 18.2</li>
-  </ul>
-</td>
+         <td rowspan="6">effluent
+            <ul>
+               <li>read: 1,118,502</li>
+               <li>bp: 5,157,996,045</li>
+               <li>n50: 6,577</li>
+               <li>mean quality: 18.2</li>
+            </ul>
+         </td>
          <td>genome copy</td>
          <td>1,348</td>
          <td>1,336</td>
@@ -214,13 +208,6 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
          <td>3.715</td>
       </tr>
       <tr>
-         <td>ARG abundance</td>
-         <td>0.507</td>
-         <td>0.511</td>
-         <td>0.512</td>
-         <td>0.519</td>
-      </tr>
-      <tr>
          <td>real time (sec)</td>
          <td>1,341</td>
          <td>1,496</td>
@@ -237,7 +224,7 @@ Both samples were collected from the Shatin wastewater treatment plant, sequence
    </tbody>
 </table>
 
-Tested on MacBook Pro 2021, Apple M1 Max, 64 GB memory, macOS Sonoma. Melon v0.1.0, NCBI database (ver. 2023-07-31) and Kraken database (ver. 2023-06-05). Mean genome size is in unit of Mb. ARG abundance is in unit of copies per cell (exlcuding multidrug ARGs). Real time and peak resident set size are measured with `time`.
+Tested on MacBook Pro 2021, Apple M1 Max, 64 GB memory, macOS Sonoma. Melon v0.1.0, NCBI database (ver. 2023-07-31) and Kraken database (ver. 2023-06-05). Mean genome size is in unit of Mb. Real time and peak resident set size are measured with `time`.
 
 ## Citation
-Chen, Xi, Xiaole Yin, Xianghui Shi, Weifu Yan, Yu Yang, Lei Liu, and Tong Zhang. "Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes." bioRxiv (2023).
+Xi Chen, Xiaole Yin, Xianghui Shi, Weifu Yan, Yu Yang, Lei Liu, and Tong Zhang. "Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes." bioRxiv (2023).
