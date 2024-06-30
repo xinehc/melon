@@ -160,7 +160,7 @@ class GenomeProfiler:
             qcoords[hit[0]].add(tuple(hit[3:5]))
 
         alignments = []
-        scores, max_scores = defaultdict(dict), dict()
+        scores, max_scores = defaultdict(dict), {}
         with open(f'{self.outfile}.minimap.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
