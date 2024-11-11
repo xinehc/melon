@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools >= 64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "melon"
+authors = [
+    {name = "Xi Chen", email = "xinehc@gmail.com"},
+]
+readme = "README.md"
+description = "Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes"
+license = {file = "LICENSE"}
+dynamic = ["version"]
+requires-python = ">=3.7"
+
+[project.scripts]
+melon = "melon.cli:cli"
+
+[tool.setuptools.dynamic]
+version = {attr = "melon.__version__"}
