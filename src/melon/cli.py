@@ -13,7 +13,7 @@ def cli(argv=sys.argv):
     Entry point for command line interface.
     '''
     parser = ArgumentParser(
-        description='Melon: metagenomic long-read-based taxonomic identification and quantification', add_help=False)
+        description='Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes', add_help=False)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     additional = parser.add_argument_group('additional arguments')
