@@ -44,7 +44,7 @@ class GenomeProfiler:
             '--output', f'{self.outfile}.kraken.output.tmp',
             '--threads', str(self.threads),
             self.file,
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], check=True, stderr=subprocess.DEVNULL)
 
     def parse_kraken(self):
         '''
@@ -82,11 +82,16 @@ class GenomeProfiler:
             '--query', self.file,
             '--out', f'{self.outfile}.diamond.tmp',
             '--outfmt', '6', *outfmt,
-            '--evalue', str(evalue), '--subject-cover', str(subject_cover), '--id', str(identity),
-            '--range-culling', '--frameshift', '15', '--range-cover', '25',
-            '--max-hsps', '0', '--max-target-seqs', str(max_target_seqs),
+            '--evalue', str(evalue),
+            '--id', str(identity),
+            '--subject-cover', str(subject_cover),
+            '--range-culling',
+            '--frameshift', '15',
+            '--range-cover', '25',
+            '--max-hsps', '0',
+            '--max-target-seqs', str(max_target_seqs),
             '--threads', str(self.threads)
-        ], check=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        ], check=True, stderr=subprocess.DEVNULL)
 
     def parse_diamond(self):
         '''
@@ -130,18 +135,19 @@ class GenomeProfiler:
 
         with open(f'{self.outfile}.minimap.tmp', 'w') as w:
             with logging_redirect_tqdm():
-                queue = tqdm(qseqids.items(), leave=False)
+                bar_format = '==> {desc}{percentage:3.0f}%|{bar}|{n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
+                queue = tqdm(dict(sorted(qseqids.items())).items(), bar_format=bar_format, leave=False)
                 for family, qseqid in queue:
-                    queue.set_description(f'==> Processing <{family}>')
-
+                    queue.set_description(f'Processing <{family}>')
                     sequences = extract_sequence(f'{self.outfile}.sequence.tmp', qseqid)
                     subprocess.run([
                         'minimap2',
                         '-cx', 'map-ont',
                         '-f', '0',
-                        '-N', str(secondary_num), '-p', str(secondary_ratio),
+                        '-N', str(secondary_num),
+                        '-p', str(secondary_ratio),
                         '-t', str(self.threads),
-                        os.path.join(self.db, 'nucl.' + family + '.mmi'), '-',
+                        os.path.join(self.db, f'nucl.{family}.mmi'), '-',
                     ], check=True, stdout=w, stderr=subprocess.DEVNULL, input=sequences, text=True)
 
     def parse_minimap(self):
@@ -160,26 +166,42 @@ class GenomeProfiler:
             qcoords[hit[0]].add(tuple(hit[3:5]))
 
         alignments = []
-        scores, max_scores = defaultdict(dict), {}
+        scores = defaultdict(lambda: defaultdict(lambda: {'AS': -np.inf, 'DE': -np.inf, 'ID': -np.inf}))
+        max_scores = defaultdict(lambda: {'AS': -np.inf, 'DE': -np.inf, 'ID': -np.inf})
         with open(f'{self.outfile}.minimap.tmp') as f:
             for line in f:
                 ls = line.rstrip().split('\t')
                 qstart, qend, qseqid, sseqid = int(ls[2]), int(ls[3]), ls[0], ls[5]
                 lineage = accession2lineage[sseqid.rsplit('_', 1)[0]]
 
-                ## filter out non-overlapping alignments
-                if (AS := int(ls[14].split('AS:i:')[-1])) > scores[qseqid].get(lineage, -np.inf):
-                    if any(compute_overlap((qstart, qend, *qcoord)) > 0 for qcoord in qcoords[qseqid]):
-                        scores[qseqid][lineage] = AS
-                        max_scores[qseqid] = max(max_scores.get(qseqid, -np.inf), AS)
+                AS_MAX, AS = scores[qseqid][lineage].get('AS', -np.inf), int(ls[14].split('AS:i:')[-1])
+                DE_MAX, DE = scores[qseqid][lineage].get('DE', -np.inf), 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1])
+                ID_MAX, ID = scores[qseqid][lineage].get('ID', -np.inf), int(ls[9]) / int(ls[10])
 
-                        DE, ID = 1 - float((ls[19] if ls[16] in {'tp:A:S', 'tp:A:i'} else ls[20]).split('de:f:')[-1]), int(ls[9]) / int(ls[10])
+                ## filter out non-overlapping alignments
+                if AS > AS_MAX or DE > DE_MAX or ID > ID_MAX:
+                    if any(compute_overlap((qstart, qend, *qcoord)) > 0 for qcoord in qcoords[qseqid]):
+                        scores[qseqid][lineage]['AS'] = max(AS_MAX, AS)
+                        scores[qseqid][lineage]['DE'] = max(DE_MAX, DE)
+                        scores[qseqid][lineage]['ID'] = max(ID_MAX, ID)
+
+                        max_scores[qseqid]['AS'] = max(max_scores[qseqid].get('AS', -np.inf), AS)
+                        max_scores[qseqid]['DE'] = max(max_scores[qseqid].get('DE', -np.inf), DE)
+                        max_scores[qseqid]['ID'] = max(max_scores[qseqid].get('ID', -np.inf), ID)
+
                         alignments.append([qseqid, sseqid, AS, DE, ID, lineage])
 
         ## filter out low-score alignments
         duplicates = set()
-        for alignment in sorted(alignments, key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]), reverse=True):
-            if max(alignment[2] / 0.995, alignment[2] + 50) > max_scores.get(alignment[0]):
+        alignments.sort(key=lambda alignment: (alignment[0], alignment[2], alignment[3], alignment[4]))
+
+        while alignments:
+            alignment = alignments.pop()
+            if (
+                max(alignment[2] / 0.995, alignment[2] + 50) > max_scores[alignment[0]]['AS'] or
+                alignment[3] ==  max_scores[alignment[0]]['DE'] or
+                alignment[4] ==  max_scores[alignment[0]]['ID']
+            ):
                 if (alignment[0], alignment[-1]) not in duplicates:
                     self.alignments.append(alignment)
                     duplicates.add((alignment[0], alignment[-1]))

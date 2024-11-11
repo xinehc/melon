@@ -1,4 +1,11 @@
 # Changelog
+## [0.2.1] - 2024-11-01
+### Changed
+- Revert filtering criteria back to v0.1.6. The old criteria turn out to be helpful in rescuing certain chimeric reads in very rare settings.
+### Fixed
+- Reduce peak memory usage.
+
+
 ## [0.2.0] - 2024-06-28
 ### Added
 - [***breaking***] Add decoy protein sequences (RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38) which effectively trap non-prokaryotic reads and prevent them from inflating total prokaryotic genome copy estimates if the pre-filtering module (default with `Kraken2`) is not enabled. Pre-filtering is no longer necessary even if samples are contaminated with human DNA or other common eukaryotes/viruses, unless the mean genome size of prokaryotes needs to be estimated. See [8918168](https://github.com/xinehc/melon-supplementary/commit/891816897bb3c82dcfff7ff44b45907593ba0eac) for more details. This function requires a database released on or after 2024-06-28.
@@ -25,15 +32,13 @@
 
 
 ## [0.1.3] - 2024-03-29
-### Changed
-- Change alignment filtering criteria: make `AS` cutoff more stringent, drop `MS`. See [7cc6dbd](https://github.com/xinehc/melon/commit/7cc6dbd866027cf5c1adaa5c69ed7919d8630607) for details.
-
-### Fixed
-- Fix a bug causing total genome copies not being properly calculated with diamond>=2.1.9.
-
 ### Added
 - Output both gap-compressed and gap-uncompressed (BLAST-like) identity.
 - Refine output format.
+### Changed
+- Change alignment filtering criteria: make `AS` cutoff more stringent, drop `MS`. See [7cc6dbd](https://github.com/xinehc/melon/commit/7cc6dbd866027cf5c1adaa5c69ed7919d8630607) for details.
+### Fixed
+- Fix a bug causing total genome copies not being properly calculated with diamond>=2.1.9.
 
 
 ## [0.1.2] - 2023-12-20
@@ -44,11 +49,9 @@
 ## [0.1.1] - 2023-11-29
 ### Added
 - Add options to control EM early stop.
-
 ### Changed
 - Use `scipy.sparse` to reduce peak memory usage and computational time.
 - Change default terminal condition of EM (`max_iteration`: 100 -> 1000; `epsilon`: 1e-5 -> 1e-10).
-
 ### Fixed
 - Fix a bug causing chimeric reads not being aggregated.
 
@@ -56,14 +59,12 @@
 ## [0.1.0] - 2023-10-08
 ### Added
 - Output a json file to indicate the lineage of processed reads.
-
 ### Changed
 - Make databases indexed by default.
 - Use only kraken's prediction for removal of non-prokaryotic reads.
 - Change `--db_kraken` to `--db-kraken` for consistency.
 - Change `sp[0-9]+` to ` sp[0-9]+` for consistency.
 - Change `copies` to `copy` in output files for consistency.
-
 ### Fixed
 - Prevent numpy from using all logical cores.
 
