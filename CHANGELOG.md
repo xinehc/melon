@@ -1,4 +1,9 @@
 # Changelog
+## [0.2.2] - 2024-11-30
+### Changed
+- Avoid direct float comparison ([315b795](https://github.com/xinehc/melon/commit/315b795ebd7f5654822e0e9a12855c375cc11774)).
+
+
 ## [0.2.1] - 2024-11-01
 ### Changed
 - Revert filtering criteria back to v0.1.6. The old criteria turn out to be helpful in rescuing certain chimeric reads in very rare settings.
