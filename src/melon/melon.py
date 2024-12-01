@@ -2,7 +2,6 @@ import glob
 import json
 import numpy as np
 
-from math import isclose
 from collections import defaultdict
 from scipy.sparse import csr_matrix
 from .utils import *
@@ -200,8 +199,8 @@ class GenomeProfiler:
             alignment = alignments.pop()
             if (
                 max(alignment[2] / 0.995, alignment[2] + 50) > max_scores[alignment[0]]['AS'] or
-                isclose(alignment[3], max_scores[alignment[0]]['DE']) or
-                isclose(alignment[4], max_scores[alignment[0]]['ID'])
+                alignment[3] == max_scores[alignment[0]]['DE'] or
+                alignment[4] == max_scores[alignment[0]]['ID']
             ):
                 if (alignment[0], alignment[-1]) not in duplicates:
                     self.alignments.append(alignment)
@@ -248,7 +247,10 @@ class GenomeProfiler:
             np.copyto(p_mappings_hist, p_mappings)
 
         ## return assignments
-        assignments = [[index] for index in np.argmax(p_reads.toarray(), axis=1)]
+        assignments = []
+        for p_read in p_reads.tocsr():
+            p_read = p_read.toarray().squeeze()
+            assignments.append(np.where(p_read == p_read.max())[0].tolist())
 
         ties = defaultdict(set)
         for qseqid, lineage in enumerate(assignments):

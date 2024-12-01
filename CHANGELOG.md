@@ -1,4 +1,9 @@
 # Changelog
+## [0.2.3] - 2024-12-01
+### Fixed
+- Fix a bug introduced in v0.2.2 causing ties not resolved properly. Results should be identical to v0.2.1.
+
+
 ## [0.2.2] - 2024-11-30
 ### Changed
 - Avoid direct float comparison ([315b795](https://github.com/xinehc/melon/commit/315b795ebd7f5654822e0e9a12855c375cc11774)).
