@@ -289,7 +289,7 @@ class GenomeProfiler:
 
     def run(self, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
-            secondary_num=2147483647, secondary_ratio=0.9,
+            secondary_num=2147483647, secondary_ratio=0.9, min_markers=1,
             max_iterations=1000, epsilon=1e-10):
         '''
         Run the pipeline.
@@ -326,10 +326,15 @@ class GenomeProfiler:
                 ) for kingdom, replacement in replacements.items()}
 
             ## count assigned taxonomic labels
-            self.hits = [[*hit, self.assignments.get(hit[0], replacements.get(hit[1]))] for hit in self.hits]
-            counts, total_counts, lineage2identity = defaultdict(lambda: 0), defaultdict(lambda: 0), defaultdict(list)
-
+            lineage2rpg = defaultdict(set)
             for hit in self.hits:
+                hit.append(self.assignments.get(hit[0], replacements.get(hit[1])))
+                lineage2rpg[hit[-1]].add(hit[2])
+
+            counts, total_counts, lineage2identity = defaultdict(lambda: 0), defaultdict(lambda: 0), defaultdict(list)
+            for hit in self.hits:
+                if len(lineage2rpg.get(hit[-1])) < min_markers:
+                    hit[-1] = replacements.get(hit[1])
                 total_counts[hit[1]] += 1
                 counts[(hit[-1], hit[1])] += 1
                 lineage2identity[hit[-1]].append(self.identities.get((hit[0], hit[-1]), (0, 0)))

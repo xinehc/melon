@@ -1,4 +1,9 @@
 # Changelog
+## [0.2.4] - 2024-12-08
+### Added
+- Add `-g` to control the minimum number of unique marker genes (default: 1) required for a species to report its genome copies. Increase `-g` (1 -> 2) lowers recall (detection limit: 0.125 -> 0.25) but improves precision.
+
+
 ## [0.2.3] - 2024-12-01
 ### Fixed
 - Fix a bug introduced in v0.2.2 causing ties not resolved properly. Results should be identical to v0.2.1.

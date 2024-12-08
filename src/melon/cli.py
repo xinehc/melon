@@ -104,6 +104,14 @@ def cli(argv=sys.argv):
         default=0.9,
         help='Min. secondary-to-primary score ratio to report secondary alignments (-p in minimap2). [0.9]')
 
+    additional.add_argument(
+        '-g',
+        metavar='INT',
+        type=int,
+        choices=range(1, 9),
+        default=1,
+        help='Min. number of unique marker genes required for a species to report its genome copies. [1]')
+
     additional_em.add_argument(
         '-a',
         metavar='INT',
@@ -186,7 +194,7 @@ def run(opt):
         GenomeProfiler(file, opt.db, opt.output, opt.threads).run(
             db_kraken=opt.db_kraken, skip_profile=opt.skip_profile, skip_clean=opt.skip_clean,
             max_target_seqs=opt.m, evalue=opt.e, identity=opt.i, subject_cover=opt.s,
-            secondary_num=opt.n, secondary_ratio=opt.p,
+            secondary_num=opt.n, secondary_ratio=opt.p, min_markers=opt.g,
             max_iterations=opt.a, epsilon=opt.c)
 
         if index == len(opt.FILE) - 1:
