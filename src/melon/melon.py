@@ -249,8 +249,8 @@ class GenomeProfiler:
         ## return assignments
         assignments = []
         for p_read in p_reads.tocsr():
-            p_read = p_read.toarray().squeeze()
-            assignments.append(np.where(p_read == p_read.max())[0].tolist())
+            p_read = p_read.toarray()
+            assignments.append(np.where(p_read == p_read.max())[1].tolist())
 
         ties = defaultdict(set)
         for qseqid, lineage in enumerate(assignments):
