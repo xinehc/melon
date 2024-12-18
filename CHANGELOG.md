@@ -1,4 +1,9 @@
 # Changelog
+## [0.2.5] - 2024-12-18
+### Fixed
+- Fix a bug that causes one-column rows to be reduced to scalars ([e07636d](https://github.com/xinehc/melon/commit/e07636dc267c0a40c51c1ab788efc45b2c3b1ad7)). This bug occurs with pure isolates when all reads can be unambiguously assigned to a single species (https://github.com/xinehc/melon/issues/5).
+
+
 ## [0.2.4] - 2024-12-08
 ### Added
 - Add `-g` to control the minimum number of unique marker genes (default: 1) required for a species to report its genome copies. Increase `-g` (1 -> 2) lowers recall (detection limit: 0.125 -> 0.25) but improves precision.
