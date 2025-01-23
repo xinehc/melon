@@ -184,7 +184,6 @@ def run(opt):
     if opt.threads > os.cpu_count():
         logger.warning(f'Threads <{opt.threads}> exceeds available logical cores, will use <{os.cpu_count()}> instead.')
         opt.threads = os.cpu_count()
-    os.environ['OMP_NUM_THREADS'] = str(opt.threads)
 
     ## run
     for index, file in enumerate(opt.FILE):
