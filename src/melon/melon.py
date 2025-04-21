@@ -18,8 +18,8 @@ class GenomeProfiler:
         self.threads = threads
         self.outfile = get_filename(self.file, self.output)
 
-        self.aset = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-        self.bset = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+        self.aset = {x.split('.')[-2] for x in glob.glob(f'{self.db}/nucl.archaea.*')}
+        self.bset = {x.split('.')[-2] for x in glob.glob(f'{self.db}/nucl.bacteria.*')}
         self.nset = set()
 
         self.ranks = ['superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']
