@@ -289,7 +289,7 @@ class GenomeProfiler:
 
     def run(self, db_kraken=None, skip_profile=False, skip_clean=False,
             max_target_seqs=25, evalue=1e-15, identity=0, subject_cover=75,
-            secondary_num=2147483647, secondary_ratio=0.9, min_markers=1,
+            secondary_num=2147483647, secondary_ratio=0.9, min_markers=2,
             max_iterations=1000, epsilon=1e-10):
         '''
         Run the pipeline.

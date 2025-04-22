@@ -109,8 +109,8 @@ def cli(argv=sys.argv):
         metavar='INT',
         type=int,
         choices=range(1, 9),
-        default=1,
-        help='Min. number of unique marker genes required for a species to report its genome copies. [1]')
+        default=2,
+        help='Min. number of unique marker genes required for a species to report its genome copies. [2]')
 
     additional_em.add_argument(
         '-a',
