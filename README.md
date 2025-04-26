@@ -11,16 +11,16 @@ conda activate melon
 
 ### Database setup
 > [!NOTE]
-> We suggest using the GTDB database for complex metagenomes, as it features less ambiguous taxonomic labels and is more comprehensive.
+> Database released on or after 2025-04-16 is not compatible with version `<0.3.0`.
 
-Download either the [NCBI](https://zenodo.org/records/12571302) or the [GTDB](https://zenodo.org/records/12571554) database:
+Download either the [NCBI](https://doi.org/10.5281/zenodo.12571187) or the [GTDB](https://doi.org/10.5281/zenodo.12571470) database:
 ```bash
 ## NCBI
-wget -qN --show-progress https://zenodo.org/records/12571302/files/database.tar.gz
+wget -qN --show-progress https://zenodo.org/records/15231351/files/database.tar.gz
 tar -zxvf database.tar.gz
 
 ## GTDB
-# wget -qN --show-progress https://zenodo.org/records/12571554/files/database.tar.gz
+# wget -qN --show-progress https://zenodo.org/records/15231379/files/database.tar.gz
 # tar -zxvf database.tar.gz
 ```
 
@@ -42,7 +42,7 @@ rm -rf database/*.fa
 
 ### Run Melon
 > [!NOTE]
-> Melon takes **quality-controlled** long reads as input. We suggest removing low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` (min. quality score 10; min. read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or other eukaryotes/viruses and you want to estimate the **mean genome size** of prokaryotes, please consider removing them via proper mapping, or enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
+> Melon takes ***quality-controlled*** long reads as input. We suggest removing low-quality raw reads before running Melon with e.g., `nanoq -q 10 -l 1000` (min. quality score 10; min. read length 1,000 bp). If your sample is known to have a large proportion of human DNAs or other eukaryotes/viruses and you want to estimate the ***mean genome size*** of prokaryotes, please consider removing them via proper mapping, or enabling the simple pre-filtering module. See [Run Melon with pre-filtering of non-prokaryotic reads](#run-melon-with-pre-filtering-of-non-prokaryotic-reads) for more details.
 
 We provide an example file comprising 10,000 quality-controlled (processed with `Porechop` and `nanoq`) prokaryotic reads (fungal and other reads removed with `minimap2`), randomly selected from the R10.3 mock sample of [Loman Lab Mock Community Experiments](https://lomanlab.github.io/mockcommunity/r10.html).
 

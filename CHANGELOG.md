@@ -1,4 +1,13 @@
 # Changelog
+## [0.3.0] - 2025-04-25
+### Added
+- Rich argparse.
+
+### Changed
+- [***breaking***] Make db parsing adaptive. Database released on or after 2025-04-16 requires `>=0.3.0`.
+- Change default min. unique marker genes (`-g`) from 1 to 2. This slightly increases precision but lowers detection limit (0.125 -> 0.25).
+
+
 ## [0.2.5] - 2024-12-18
 ### Fixed
 - Fix a bug that causes one-column rows to be reduced to scalars ([e07636d](https://github.com/xinehc/melon/commit/e07636dc267c0a40c51c1ab788efc45b2c3b1ad7)). This bug occurs with pure isolates when all reads can be unambiguously assigned to a single species (https://github.com/xinehc/melon/issues/5).
