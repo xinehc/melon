@@ -12,6 +12,12 @@ description = "Melon: metagenomic long-read-based taxonomic identification and q
 license = {file = "LICENSE"}
 dynamic = ["version"]
 requires-python = ">=3.7"
+dependencies = [
+    "tqdm",
+    "scipy",
+    "numpy",
+    "rich-argparse",
+]
 
 [project.scripts]
 melon = "melon.cli:cli"

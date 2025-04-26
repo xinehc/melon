@@ -1,29 +1,37 @@
 import sys
 import os
 import glob
+import argparse
 
-from argparse import ArgumentParser, SUPPRESS
+from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from . import __version__
 from .utils import logger
 from .melon import GenomeProfiler
+
+## customize formatter
+ArgumentDefaultsRichHelpFormatter.styles['argparse.prog'] = 'default'
+ArgumentDefaultsRichHelpFormatter.styles['argparse.default'] = 'grey50'
+ArgumentDefaultsRichHelpFormatter.styles['argparse.metavar'] = 'grey50'
+ArgumentDefaultsRichHelpFormatter.styles['argparse.groups'] = '#FFA62F'
+ArgumentDefaultsRichHelpFormatter.styles['argparse.args'] = 'default'
 
 
 def cli(argv=sys.argv):
     '''
     Entry point for command line interface.
     '''
-    parser = ArgumentParser(
-        description='Melon: metagenomic long-read-based taxonomic identification and quantification using marker genes', add_help=False)
-    required = parser.add_argument_group('required arguments')
-    optional = parser.add_argument_group('optional arguments')
-    additional = parser.add_argument_group('additional arguments')
-    additional_em = parser.add_argument_group('additional arguments for EM')
+    parser = argparse.ArgumentParser(
+        description=f'Melon v{__version__}: metagenomic long-read-based taxonomic identification and quantification using marker genes',
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+        add_help=False)
 
     parser.add_argument(
-        'FILE',
+        dest='files',
         nargs='+',
+        metavar='file',
         help='Input fasta <*.fa|*.fasta> or fastq <*.fq|*.fastq> file, gzip optional <*.gz>.')
 
+    required = parser.add_argument_group('required arguments')
     required.add_argument(
         '-d',
         '--db',
@@ -38,6 +46,7 @@ def cli(argv=sys.argv):
         required=True,
         help='Output folder.')
 
+    optional = parser.add_argument_group('optional arguments')
     optional.add_argument(
         '-t',
         '--threads',
@@ -55,54 +64,55 @@ def cli(argv=sys.argv):
     optional.add_argument(
         '--skip-profile',
         action='store_true',
-        help='Skip profiling, output only estimated total genome copies.')
+        help='Skip profiling, output only total genome copies.')
 
     optional.add_argument(
         '--skip-clean',
         action='store_true',
         help='Skip cleaning, keep all temporary <*.tmp> files.')
 
+    additional = parser.add_argument_group('additional arguments - Filtering')
     additional.add_argument(
         '-m',
         metavar='INT',
         type=int,
         default=25,
-        help='Max. number of target sequences to report (--max-target-seqs/-k in diamond). [25]')
+        help='Max. number of target sequences to report (--max-target-seqs/-k in diamond).')
 
     additional.add_argument(
         '-e',
         metavar='FLOAT',
         type=float,
         default=1e-15,
-        help='Max. expected value to report alignments (--evalue/-e in diamond). [1e-15]')
+        help='Max. expected value to report alignments (--evalue/-e in diamond).')
 
     additional.add_argument(
         '-i',
         metavar='FLOAT',
         type=float,
         default=0,
-        help='Min. identity in percentage to report alignments (--id in diamond). [0]')
+        help='Min. identity in percentage to report alignments (--id in diamond).')
 
     additional.add_argument(
         '-s',
         metavar='FLOAT',
         type=float,
         default=75,
-        help='Min. subject cover to report alignments (--subject-cover in diamond). [75]')
+        help='Min. subject cover to report alignments (--subject-cover in diamond).')
 
     additional.add_argument(
         '-n',
         metavar='INT',
         type=int,
         default=2147483647,
-        help='Max. number of secondary alignments to report (-N in minimap2). [2147483647]')
+        help='Max. number of secondary alignments to report (-N in minimap2).')
 
     additional.add_argument(
         '-p',
         metavar='FLOAT',
         type=float,
         default=0.9,
-        help='Min. secondary-to-primary score ratio to report secondary alignments (-p in minimap2). [0.9]')
+        help='Min. secondary-to-primary score ratio to report secondary alignments (-p in minimap2).')
 
     additional.add_argument(
         '-g',
@@ -110,24 +120,25 @@ def cli(argv=sys.argv):
         type=int,
         choices=range(1, 9),
         default=2,
-        help='Min. number of unique marker genes required for a species to report its genome copies. [2]')
+        help='Min. number of unique marker genes required for a species to report its genome copies.')
 
-    additional_em.add_argument(
+    additional = parser.add_argument_group('additional arguments - Fitting')
+    additional.add_argument(
         '-a',
         metavar='INT',
         type=int,
         default=1000,
-        help='Terminal condition - max. iterations. [1000]')
+        help='Terminal condition for EM - max. iterations.')
 
-    additional_em.add_argument(
+    additional.add_argument(
         '-c',
         metavar='FLOAT',
         type=float,
         default=1e-10,
-        help='Terminal condition - epsilon (precision). [1e-10]')
+        help='Terminal condition for EM - epsilon (precision).')
 
-    parser.add_argument('-v', '--version', action='version', version=__version__, help=SUPPRESS)
-    parser.add_argument('-h', '--help', action='help', help=SUPPRESS)
+    parser.add_argument('-v', '--version', action='version', version=__version__, help=argparse.SUPPRESS)
+    parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
 
     if len(argv) == 1:
         print(f"\
@@ -151,7 +162,7 @@ def run(opt):
         logger.warning(f'Folder <{opt.output}> exists. Files will be overwritten.')
 
     ## check for input files
-    for file in opt.FILE:
+    for file in opt.files:
         if not os.path.isfile(file):
             logger.critical(f'File <{file}> does not exist.')
             sys.exit(2)
@@ -186,9 +197,9 @@ def run(opt):
         opt.threads = os.cpu_count()
 
     ## run
-    for index, file in enumerate(opt.FILE):
-        if len(opt.FILE) > 1:
-            logger.info(f'Processing file <{file}> ({index + 1}/{len(opt.FILE)}) ...')
+    for index, file in enumerate(opt.files):
+        if len(opt.files) > 1:
+            logger.info(f'Processing file <{file}> ({index + 1}/{len(opt.files)}) ...')
 
         GenomeProfiler(file, opt.db, opt.output, opt.threads).run(
             db_kraken=opt.db_kraken, skip_profile=opt.skip_profile, skip_clean=opt.skip_clean,
@@ -196,7 +207,7 @@ def run(opt):
             secondary_num=opt.n, secondary_ratio=opt.p, min_markers=opt.g,
             max_iterations=opt.a, epsilon=opt.c)
 
-        if index == len(opt.FILE) - 1:
+        if index == len(opt.files) - 1:
             logger.info('Done.')
         else:
             logger.info('Done.\n')
