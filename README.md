@@ -3,6 +3,9 @@ Melon: **me**tagenomic **lon**g-read-based taxonomic identification and quantifi
 
 ## Quick start
 ### Installation
+<a href="https://anaconda.org/bioconda/melon"> <img src="https://anaconda.org/bioconda/melon/badges/version.svg" /></a>
+<a href="https://anaconda.org/bioconda/melon"> <img src="https://anaconda.org/bioconda/melon/badges/latest_release_date.svg" /></a>
+
 Create a new conda environment and install:
 ```bash
 conda create -n melon -c conda-forge -c bioconda melon
