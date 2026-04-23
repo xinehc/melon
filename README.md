@@ -16,20 +16,20 @@ conda activate melon
 > [!NOTE]
 > Database released on or after 2025-04-16 is not compatible with version `<0.3.0`.
 
-| Database | Species | Genome | Update |
-| ---: | :---: | :---: | :---: |
-| **RefSeq R229** | 63,660 | 423,988 | 2025 |
-| **GTDB R226** | 143,614 | 732,357 | 2025 |
-
 Download either the [NCBI](https://doi.org/10.5281/zenodo.12571187) or the [GTDB](https://doi.org/10.5281/zenodo.12571470) database:
+| Taxonomy | Latest version | Species | Genome | Update |
+| :---: | :---: | :---: | :---: | :---: |
+| NCBI | RefSeq R229 | 63,660 | 423,988 | 2025 |
+| GTDB | GTDB R232 | 143,614 | 732,357 | 2025 |
+
 ```bash
 ## NCBI
-# wget -qN --show-progress https://zenodo.org/records/15231351/files/database.tar.gz
-# tar -zxvf database.tar.gz
+wget -qN --show-progress https://zenodo.org/records/15231351/files/database.tar.gz
+tar -zxvf database.tar.gz
 
 ## GTDB
-wget -qN --show-progress https://zenodo.org/records/15231379/files/database.tar.gz
-tar -zxvf database.tar.gz
+# wget -qN --show-progress https://zenodo.org/records/15231379/files/database.tar.gz
+# tar -zxvf database.tar.gz
 ```
 
 Index the files: 
