@@ -14,13 +14,13 @@ conda activate melon
 
 ### Database setup
 > [!NOTE]
-> Database released on or after 2025-04-16 is not compatible with version `<0.3.0`.
+> Database released on or after 2025-04-16 is not compatible with version `<0.3.0`. Instruction on building the GTDB database can be found in https://github.com/xinehc/melon-supplementary.
 
 Download either the [NCBI](https://doi.org/10.5281/zenodo.12571187) or the [GTDB](https://doi.org/10.5281/zenodo.12571470) database:
 | Taxonomy | Latest version | Species | Genome | Update |
 | :---: | :---: | :---: | :---: | :---: |
 | NCBI | RefSeq R229 | 63,660 | 423,988 | 2025 |
-| GTDB | GTDB R232 | 143,614 | 732,357 | 2025 |
+| GTDB | GTDB R226 | 143,614 | 732,357 | 2025 |
 
 ```bash
 ## NCBI
