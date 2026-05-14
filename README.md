@@ -24,12 +24,12 @@ Download either the [NCBI](https://doi.org/10.5281/zenodo.12571187) or the [GTDB
 
 ```bash
 ## NCBI
-wget -qN --show-progress https://zenodo.org/records/15231351/files/database.tar.gz
-tar -zxvf database.tar.gz
+# wget -qN --show-progress https://zenodo.org/records/15231351/files/database.tar.gz
+# tar -zxvf database.tar.gz
 
 ## GTDB
-# wget -qN --show-progress https://zenodo.org/records/19924976/files/database.tar.gz
-# tar -zxvf database.tar.gz
+wget -qN --show-progress https://zenodo.org/records/19924976/files/database.tar.gz
+tar -zxvf database.tar.gz
 ```
 
 Index the files: 
@@ -62,7 +62,7 @@ melon example.fa.gz -d database -o .
 You should see:
 ```
 INFO: Estimating genome copies ...
-INFO: ... found 27.375 copies of genomes (bacteria: 27.375; archaea: 0).
+INFO: ... found 27.75 copies of genomes (bacteria: 27.75; archaea: 0).
 INFO: Assigning taxonomy ...
 INFO: Reassigning taxonomy ...
 INFO: ... found 8 unique species (bacteria: 8; archaea: 0).
@@ -71,15 +71,16 @@ INFO: Done.
 
 The output file `*.tsv` contains the estimated genome copies for individual species, their corresponding relative abundances and gap-compressed/gap-uncompressed ANI (average nucleotide identity between marker-gene-containing reads and reference genome clusters) values:
 ```
-...    species                               copy     abundance       identity
-...    287|Pseudomonas aeruginosa            2.125    7.762557e-02    0.9570/0.9473
-...    96241|Bacillus spizizenii             2.875    1.050228e-01    0.9617/0.9531
-...    1351|Enterococcus faecalis            3.000    1.095890e-01    0.9616/0.9534
-...    28901|Salmonella enterica             3.125    1.141553e-01    0.9525/0.9433
-...    562|Escherichia coli                  3.500    1.278539e-01    0.9588/0.9504
-...    1639|Listeria monocytogenes           3.750    1.369863e-01    0.9627/0.9546
-...    1280|Staphylococcus aureus            3.875    1.415525e-01    0.9598/0.9517
-...    1613|Limosilactobacillus fermentum    5.125    1.872146e-01    0.9654/0.9574
+...    species                          copy     abundance       identity
+...    Pseudomonas aeruginosa           2.125    7.657658e-02    0.9573/0.9474
+...    Bacillus spizizenii              2.750    9.909910e-02    0.9612/0.9530
+...    Salmonella enterica              3.125    1.126126e-01    0.9524/0.9433
+...    Enterococcus faecalis            3.500    1.261261e-01    0.9600/0.9515
+...    Listeria monocytogenes_B         3.500    1.261261e-01    0.9623/0.9547
+...    Escherichia coli                 3.625    1.306306e-01    0.9569/0.9477
+...    Staphylococcus aureus            4.125    1.486486e-01    0.9594/0.9513
+...    Limosilactobacillus fermentum    5.000    1.801802e-01    0.9651/0.9574
+
 ```
 
 The output file `*.json` contains the lineage and remark of each processed read.
@@ -87,12 +88,12 @@ The output file `*.json` contains the lineage and remark of each processed read.
 {
     "002617ff-697a-4cd5-8a97-1e136a792228": {
         "remark": "marker-gene-containing",
-        "lineage": "2|Bacteria;1239|Bacillota;91061|Bacilli;186826|Lactobacillales;81852|Enterococcaceae;1350|Enterococcus;1351|Enterococcus faecalis"
+        "lineage": "Bacteria;Bacillota;Bacilli;Lactobacillales;Enterococcaceae;Enterococcus;Enterococcus faecalis"
     },
     ...
     "ffe73d61-55eb-4ad8-9519-e38c364fc11d": {
         "remark": "marker-gene-containing",
-        "lineage": "2|Bacteria;1224|Pseudomonadota;1236|Gammaproteobacteria;91347|Enterobacterales;543|Enterobacteriaceae;590|Salmonella;28901|Salmonella enterica"
+        "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae;Salmonella;Salmonella enterica"
     }
 }
 ```
